@@ -1,0 +1,72 @@
+{
+  "name": "@tw-in-js/typescript-plugin",
+  "version": "0.0.0",
+  "description": "TypeScript language service plugin that adds IntelliSense for tailwindjs",
+  "keywords": [
+    "TypeScript",
+    "tw-in-js",
+    "tailwind-in-js",
+    "tailwind"
+  ],
+  "homepage": "https://github.com/tw-in-js/typescript-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/tw-in-js/typescript-plugin/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tw-in-js/typescript-plugin.git"
+  },
+  "license": "MIT",
+  "contributors": [
+    "Luke Jackson (lukejacksonn.github.io)",
+    "Sascha Tandel (https://github.com/sastan)"
+  ],
+  "main": "dist/node/typescript-plugin.js",
+  "source": "src/index.ts",
+  "browser": false,
+  "scripts": {
+    "build": "nps",
+    "ci": "nps",
+    "format": "nps",
+    "prelink": "yarn build",
+    "link": "cd dist && yarn link",
+    "release": "np",
+    "test": "nps",
+    "version": "nps build.package"
+  },
+  "prettier": "@carv/prettier-config",
+  "eslintConfig": {
+    "extends": "@carv/eslint-config",
+    "root": true
+  },
+  "jest": {
+    "preset": "@carv/jest-preset"
+  },
+  "dependencies": {
+    "@carv/esbundle": "^1.1.6",
+    "@carv/eslint-config": "^1.6.0",
+    "@carv/jest-preset": "^1.1.6",
+    "@carv/prettier-config": "^1.1.0",
+    "@carv/tsconfig": "^1.3.0",
+    "dlv": "^1.1.3",
+    "eslint": "^7.3.1",
+    "jest": "^26.1.0",
+    "np": "^7.0.0",
+    "nps": "^5.9.12",
+    "prettier": "^2.0.5",
+    "tailwindcss": "^2.0.1",
+    "typescript": "^4.1.0",
+    "typescript-template-language-service-decorator": "^2.2.0",
+    "vscode-languageserver-types": "^3.13.0"
+  },
+  "devDependencies": {
+    "nps": "^5.9.12"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.com/"
+  },
+  "np": {
+    "contents": "dist"
+  }
+}
