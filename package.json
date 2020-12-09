@@ -1,6 +1,6 @@
 {
   "name": "@tw-in-js/typescript-plugin",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "TypeScript language service plugin that adds IntelliSense for tailwindjs",
   "keywords": [
     "TypeScript",
