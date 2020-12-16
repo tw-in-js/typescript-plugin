@@ -1,9 +1,9 @@
-# @tw-in-js/typescript-plugin
+# @twind/typescript-plugin
 
 > TypeScript language service plugin that adds IntelliSense for tailwindjs
 
-[![MIT License](https://flat.badgen.net/github/license/tw-in-js/typescript-plugin)](https://github.com/tw-in-js/core/blob/main/LICENSE)
-[![Latest Release](https://flat.badgen.net/npm/v/@tw-in-js/typescript-plugin?icon=npm&label)](https://www.npmjs.com/package/@tw-in-js/typescript-plugin)
+[![MIT License](https://flat.badgen.net/github/license/tw-in-js/typescript-plugin)](https://github.com/tw-in-js/typescript-plugin/blob/main/LICENSE)
+[![Latest Release](https://flat.badgen.net/npm/v/@twind/typescript-plugin?icon=npm&label)](https://www.npmjs.com/package/@twind/typescript-plugin)
 [![Github](https://flat.badgen.net/badge/icon/tw-in-js%2Ftypescript-plugin?icon=github&label)](https://github.com/tw-in-js/typescript-plugin)
 
 ---
@@ -34,7 +34,7 @@ Provides editor support for ```tw`...```` tagged template syntax including:
 ## Installation
 
 ```sh
-npm install --save-dev @tw-in-js/typescript-plugin
+npm install --save-dev @twind/typescript-plugin
 ```
 
 ## Usage
@@ -54,7 +54,7 @@ Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang
   "compilerOptions": {
     "plugins": [
       {
-        "name": "@tw-in-js/typescript-plugin"
+        "name": "@twind/typescript-plugin"
       }
     ]
   }
@@ -82,7 +82,7 @@ Finally add a `plugins` section to your [`tsconfig.json`](http://www.typescriptl
   "compilerOptions": {
     "plugins": [
       {
-        "name": "@tw-in-js/typescript-plugin"
+        "name": "@twind/typescript-plugin"
       }
     ]
   }
@@ -100,7 +100,7 @@ Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang
   "compilerOptions": {
     "plugins": [
       {
-        "name": "@tw-in-js/typescript-plugin"
+        "name": "@twind/typescript-plugin"
       }
     ]
   }
@@ -120,7 +120,7 @@ Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang
   "compilerOptions": {
     "plugins": [
       {
-        "name": "@tw-in-js/typescript-plugin"
+        "name": "@twind/typescript-plugin"
       }
     ]
   }
@@ -154,7 +154,7 @@ You can enable IntelliSense for other tag names by configuring `"tags"`:
   "compilerOptions": {
     "plugins": [
       {
-        "name": "@tw-in-js/typescript-plugin",
+        "name": "@twind/typescript-plugin",
         "tags": ["tw", "cx"]
       }
     ]
@@ -197,7 +197,7 @@ cd dist
 yarn link
 cd project-fixtures/react-apollo-prj
 yarn install
-yarn link @tw-in-js/typescript-plugin
+yarn link @twind/typescript-plugin
 code . # Or launch editor/IDE what you like
 ```
 

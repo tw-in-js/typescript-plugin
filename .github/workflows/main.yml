@@ -22,25 +22,8 @@ jobs:
       - name: Install 🔧
         uses: bahmutov/npm-install@v1
 
-      - name: Test
-        run: yarn run ci
+      - name: Lint
+        run: yarn run lint
 
       - name: Build
         run: yarn run build
-
-      - name: Coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          flag-name: build-${{ matrix.node }}-${{ matrix.os }}
-          parallel: true
-
-  finish:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.github_token }}
-          parallel-finished: true

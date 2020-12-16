@@ -37,12 +37,10 @@ const endGrouping = (isWhitespace?: boolean): void => {
   const index = groupings.lastIndexOf('')
 
   if (~index) {
-    /* eslint-disable unicorn/prefer-math-trunc */
     groupings.splice(
       index + ~~(isWhitespace as boolean),
       groupings.length - index + ~~(isWhitespace as boolean),
     )
-    /* eslint-enable unicorn/prefer-math-trunc */
   }
 }
 

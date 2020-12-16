@@ -1,1 +1,1 @@
-export const pluginName = '@tw-in-js/typescript-plugin'
+export const pluginName = '@twind/typescript-plugin'
