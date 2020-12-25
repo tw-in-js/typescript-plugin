@@ -27,7 +27,7 @@
 
 Provides editor support for ```tw`...```` tagged template syntax including:
 
-- Autocomplete for tailwind, beamwind and oceanwin classes
+- Autocomplete for tailwind, beamwind and oceanwind classes
 - Warnings on unknown classes
 - Quick fixes for misspelled property names.
 
