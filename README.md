@@ -27,14 +27,14 @@
 
 Provides editor support for ```tw`...```` tagged template syntax including:
 
-- Autocomplete for tailwind, beamwind and oceanwind classes
+- Autocomplete for [twind](https://github.com/tw-in-js/twind) classes
 - Warnings on unknown classes
 - Quick fixes for misspelled property names.
 
 ## Installation
 
 ```sh
-npm install --save-dev @twind/typescript-plugin
+npm install --save-dev typescript @twind/typescript-plugin
 ```
 
 ## Usage
@@ -43,9 +43,7 @@ This plugin requires TypeScript 2.4 or later. It can provide intellisense in bot
 
 ### With VS Code
 
-Just install the [VS Code tailwindjs extension](https://github.com/tw-in-js/core/packages/vscode). This extension adds syntax highlighting and IntelliSense for styled components in JavaScript and TypeScript files.
-
-If you are using a [workspace version of TypeScript](<(https://code.visualstudio.com/Docs/languages/typescript#_using-newer-typescript-versions)>) however, you must manually install the plugin along side the version of TypeScript in your workspace.
+Currently you must manually install the plugin along side TypeScript in your workspace.
 
 Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang.org/docs/handbook/tsconfig-json.html) or [`jsconfig.json`](https://code.visualstudio.com/Docs/languages/javascript#_javascript-project-jsconfigjson)
 
@@ -61,7 +59,7 @@ Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang
 }
 ```
 
-Finally, run the `Select TypeScript version` command in VS Code to switch to use the workspace version of TypeScript for VS Code's JavaScript and TypeScript language support. You can find more information about managing typescript versions [in the VS Code documentation](https://code.visualstudio.com/Docs/languages/typescript#_using-newer-typescript-versions).
+Finally, run the `Select TypeScript version` command in VS Code to switch to use the workspace version of TypeScript for VS Code's JavaScript and TypeScript language support. You can find more information about managing typescript versions [in the VS Code documentation](https://code.visualstudio.com/docs/typescript/typescript-compiling#_using-the-workspace-version-of-typescript).
 
 ### With Sublime
 
@@ -168,7 +166,7 @@ Now strings tagged with either `tw` and `cx` will have IntelliSense.
 
 Thanks for being willing to contribute!
 
-> This project is free and open-source, so if you think this project can help you or anyone else, you may [star it on GitHub](https://github.com/tw-in-js/core). Feel free to [open an issue](https://github.com/tw-in-js/core/issues) if you have any idea, question, or you've found a bug.
+> This project is free and open-source, so if you think this project can help you or anyone else, you may [star it on GitHub](https://github.com/tw-in-js/typescript-plugin). Feel free to [open an issue](https://github.com/tw-in-js/typescript-plugin/issues) if you have any idea, question, or you've found a bug.
 
 **Working on your first Pull Request?** You can learn how from this _free_ series [How to Contribute to an Open Source Project on GitHub](https://egghead.io/series/how-to-contribute-to-an-open-source-project-on-github)
 
