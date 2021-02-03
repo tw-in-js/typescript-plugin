@@ -7,7 +7,7 @@ export interface TailwindjsPluginConfiguration {
 
 export class ConfigurationManager {
   private static readonly defaultConfiguration: TailwindjsPluginConfiguration = {
-    tags: ['tw'],
+    tags: ['tw', 'apply'],
     // Validate: true,
     // lint: {
     //     emptyRules: 'ignore',
