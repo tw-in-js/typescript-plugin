@@ -10,6 +10,8 @@ export interface ParsedRule {
   /** [":sm", ":dark", ":hover"] */
   variants: string[]
 
+  important: boolean
+
   prefix: string
 
   /** "text-sm", "rotate-45" */
@@ -34,14 +36,7 @@ const endGrouping = (isWhitespace?: boolean): void => {
   // ['', ':sm', ':hover'] => ['']
   // ['', ':sm', ':hover', ''] => ['', ':sm', ':hover', '']
 
-  const index = groupings.lastIndexOf('')
-
-  if (~index) {
-    groupings.splice(
-      index + ~~(isWhitespace as boolean),
-      groupings.length - index + ~~(isWhitespace as boolean),
-    )
-  }
+  groupings.length = Math.max(groupings.lastIndexOf('') + ~~(isWhitespace as boolean), 0)
 }
 
 const onlyPrefixes = (s: string): '' | boolean => s && s[0] !== ':'
@@ -59,7 +54,7 @@ export const parse = (text: string, offset = text.length): ParsedRule => {
       case ':':
         if (token) {
           tokenStartOffset = offset
-          token = startGrouping(':' + token)
+          token = startGrouping(':' + (text[position + 1] == char ? text[position++] : '') + token)
         }
 
         break
@@ -91,7 +86,13 @@ export const parse = (text: string, offset = text.length): ParsedRule => {
     }
   }
 
-  const variants = groupings.filter(onlyVariants)
+  const variants = groupings.filter(onlyVariants).map((variant) => {
+    if (variant.startsWith('::')) {
+      return variant.slice(2) + '::'
+    }
+
+    return variant.slice(1) + ':'
+  })
   const prefix = groupings.filter(onlyPrefixes).join('-')
   const directive = token === '&' ? token : (prefix && prefix + '-') + token
 
@@ -99,12 +100,19 @@ export const parse = (text: string, offset = text.length): ParsedRule => {
     tokenStartOffset += 1
   }
 
+  const important = token[token.length - 1] == '!'
+
+  if (important) {
+    token = token.slice(0, -1)
+  }
+
   return {
     token,
     variants,
+    important,
     prefix,
     directive,
-    rule: (variants.length === 0 ? '' : variants.join('').slice(1) + ':') + directive,
+    rule: variants.join('') + directive,
     tokenStartOffset,
   }
 }

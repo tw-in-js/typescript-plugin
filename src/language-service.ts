@@ -7,13 +7,14 @@ import type {
   TemplateLanguageService,
 } from 'typescript-template-language-service-decorator'
 import type * as ts from 'typescript/lib/tsserverlibrary'
+import * as vscode from 'vscode-languageserver-types'
 
 import type { ConfigurationManager } from './configuration'
 
-import * as vscode from 'vscode-languageserver-types'
+import { defaultBaseSortFn, matchSorter } from 'match-sorter'
 
-import { processPlugins } from './process-plugins'
-import { parse } from './parse'
+import { parse, ParsedRule } from './parse'
+import { CompletionToken, Twind } from './twind'
 
 function arePositionsEqual(left: ts.LineAndCharacter, right: ts.LineAndCharacter): boolean {
   return left.line === right.line && left.character === right.character
@@ -27,19 +28,28 @@ function arePositionsEqual(left: ts.LineAndCharacter, right: ts.LineAndCharacter
 //   return !isAfter(a.end, b.start) && !isAfter(b.end, a.start)
 // }
 
-function pad(n: string): string {
-  return ('00000000' + n).slice(-8)
-}
-
-function naturalExpand(value: number | string): string {
-  const string = typeof value === 'string' ? value : value.toString()
-  return string.replace(/\d+/g, pad)
-}
-
 // !const emptyCompletionList: vscode.CompletionList = {
 //   items: [],
 //   isIncomplete: false,
 // }
+
+const enum ErrorCodes {
+  UNKNOWN_DIRECTIVE = -2020,
+  UNKNOWN_THEME_VALUE = -2021,
+}
+
+const pad = (n: string): string => n.padStart(8, '0')
+
+const naturalExpand = (value: number | string): string => ('' + value).replace(/\d+/g, pad)
+
+// By default, match-sorter assumes spaces to be the word separator.
+// Lets split the text into whitespace spearated words
+const prepareText = (value: string): string =>
+  value
+    .replace(/[A-Z]/g, ' $&')
+    .replace(/(?<!^)[_-]/g, ' ')
+    .replace(/(?<!^|\d)\d/g, ' $&')
+    .replace(/\d(?!$|\d)/g, '$& ')
 
 class CompletionsCache {
   private _cachedCompletionsFile?: string
@@ -74,19 +84,25 @@ class CompletionsCache {
   }
 }
 
-export class TailwindjsTemplateLanguageService implements TemplateLanguageService {
+export class TwindTemplateLanguageService implements TemplateLanguageService {
   private readonly typescript: typeof ts
+  private readonly info: ts.server.PluginCreateInfo
   private readonly configurationManager: ConfigurationManager
   private readonly logger: Logger
   private readonly _completionsCache = new CompletionsCache()
+  private readonly _twind: Twind
 
-  private state: ReturnType<typeof processPlugins>
-
-  constructor(typescript: typeof ts, configurationManager: ConfigurationManager, logger: Logger) {
+  constructor(
+    typescript: typeof ts,
+    info: ts.server.PluginCreateInfo,
+    configurationManager: ConfigurationManager,
+    logger: Logger,
+  ) {
     this.typescript = typescript
+    this.info = info
     this.configurationManager = configurationManager
     this.logger = logger
-    this.state = processPlugins()
+    this._twind = new Twind(typescript, info, configurationManager, logger)
   }
 
   public getCompletionsAtPosition(
@@ -119,59 +135,114 @@ export class TailwindjsTemplateLanguageService implements TemplateLanguageServic
     return translateCompletionItemsToCompletionEntryDetails(this.typescript, item)
   }
 
-  // Public getQuickInfoAtPosition(
-  //   context: TemplateContext,
-  //   position: ts.LineAndCharacter,
-  // ): ts.QuickInfo | undefined {
-  //   const doc = this.virtualDocumentFactory.createVirtualDocument(context)
-  //   const stylesheet = this.scssLanguageService.parseStylesheet(doc)
-  //   const hover = this.scssLanguageService.doHover(
-  //     doc,
-  //     this.virtualDocumentFactory.toVirtualDocPosition(position),
-  //     stylesheet,
-  //   )
-  //   if (hover) {
-  //     return this.translateHover(
-  //       hover,
-  //       this.virtualDocumentFactory.toVirtualDocPosition(position),
-  //       context,
-  //     )
-  //   }
-  // }
+  public getQuickInfoAtPosition(
+    context: TemplateContext,
+    position: ts.LineAndCharacter,
+  ): ts.QuickInfo | undefined {
+    const offset = context.toOffset(position)
 
-  // public getSemanticDiagnostics(context: TemplateContext): ts.Diagnostic[] {
-  //   const diagnostics: ts.Diagnostic[] = []
+    const find = (char: string): number => {
+      const index = context.text.indexOf(char, offset)
+      return index >= offset ? index : context.text.length
+    }
 
-  //   // for (const match of regexExec(/[^:\s]+:?/g, templateContext.text)) {
-  //   //   const className = match[0]
-  //   //   const start = match.index
-  //   //   const length = match[0].length
+    const nextBoundary = Math.min(find(')'), find(' '), find('\t'), find('\n'), find('\r'))
 
-  //   //   if (!languageServiceContext.completionEntries.has(className)) {
-  //   //     diagnostics.push({
-  //   //       messageText: `unknown tailwind class or variant "${className}"`,
-  //   //       start: start,
-  //   //       length: length,
-  //   //       file: templateContext.node.getSourceFile(),
-  //   //       category: ts.DiagnosticCategory.Warning,
-  //   //       code: 0, // ???
-  //   //     })
-  //   //   }
-  //   // }
+    if (nextBoundary == offset) {
+      return undefined
+    }
 
-  //   return diagnostics
-  //   // const doc = this.virtualDocumentFactory.createVirtualDocument(context)
-  //   // const stylesheet = this.scssLanguageService.parseStylesheet(doc)
-  //   // return this.translateDiagnostics(
-  //   //   this.scssLanguageService.doValidation(doc, stylesheet),
-  //   //   doc,
-  //   //   context,
-  //   //   context.text,
-  //   // ).filter((x) => !!x) as ts.Diagnostic[]
-  // }
+    const parsed = parse(context.text, nextBoundary)
+
+    const end = parsed.tokenStartOffset + (parsed.token == '&' ? -1 : 0)
+    const start = Math.max(0, end - parsed.token.length)
+    const rule = parsed.prefix ? parsed.rule.replace('&', parsed.prefix) : parsed.rule
+
+    const css = this._twind.css(rule)
+
+    if (css) {
+      return {
+        kind: translateCompletionItemKind(this.typescript, vscode.CompletionItemKind.Property),
+        kindModifiers: '',
+        textSpan: {
+          start,
+          length: end - start,
+        },
+        displayParts: toDisplayParts(rule),
+        // displayParts: [],
+        documentation: toDisplayParts({
+          kind: 'markdown',
+          value: '```css\n' + css + '\n```',
+        }),
+        tags: [],
+      }
+    }
+
+    return undefined
+  }
+
+  public getSemanticDiagnostics(context: TemplateContext): ts.Diagnostic[] {
+    const diagnostics: ts.Diagnostic[] = []
+
+    const { text } = context
+
+    for (let offset = 0; offset <= text.length; offset++) {
+      if (') \t\n\r'.includes(text[offset]) || offset == text.length) {
+        const parsed = parse(context.text, offset)
+
+        const rule = parsed.prefix ? parsed.rule.replace('&', parsed.prefix) : parsed.rule
+
+        if (rule) {
+          const end = offset
+          const start = Math.max(0, end - parsed.token.length)
+
+          this.logger.log(
+            `getDiagnostics: ${rule} ${parsed.token} - ${parsed.tokenStartOffset} ${start}:${end}`,
+          )
+
+          this._twind.getDiagnostics(rule)?.some((info) => {
+            switch (info.id) {
+              case 'UNKNOWN_DIRECTIVE': {
+                diagnostics.push({
+                  messageText: `Unknown utility "${
+                    parsed.prefix ? parsed.directive.replace('&', parsed.prefix) : parsed.directive
+                  }"`,
+                  start: start,
+                  length: end - start,
+                  file: context.node.getSourceFile(),
+                  category: this.typescript.DiagnosticCategory.Warning,
+                  code: ErrorCodes.UNKNOWN_DIRECTIVE,
+                })
+                return true
+              }
+              case 'UNKNOWN_THEME_VALUE': {
+                if (info.key) {
+                  const [section, ...key] = info.key?.split('.')
+
+                  diagnostics.push({
+                    messageText: `Unknown theme value "${section}[${key.join('.')}]"`,
+                    start: start,
+                    length: end - start,
+                    file: context.node.getSourceFile(),
+                    category: this.typescript.DiagnosticCategory.Warning,
+                    code: ErrorCodes.UNKNOWN_THEME_VALUE,
+                  })
+                  return true
+                }
+              }
+            }
+
+            return false
+          })
+        }
+      }
+    }
+
+    return diagnostics
+  }
 
   // public getSupportedCodeFixes(): number[] {
-  //   return [cssErrorCode]
+  //   return [ErrorCodes.UNKNOWN_DIRECTIVE, ErrorCodes.UNKNOWN_THEME_VALUE]
   // }
 
   // public getCodeFixesAtPosition(
@@ -209,6 +280,84 @@ export class TailwindjsTemplateLanguageService implements TemplateLanguageServic
   //     .map((range) => this.translateOutliningSpan(context, range))
   // }
 
+  private getCompletionItem(
+    context: TemplateContext,
+    position: ts.LineAndCharacter,
+    completion: CompletionToken,
+    parsed: ParsedRule,
+    sortedIndex: number,
+  ): vscode.CompletionItem {
+    const label =
+      parsed.prefix && completion.kind == 'utility'
+        ? completion.label.slice(parsed.prefix.length + 1)
+        : completion.label
+
+    const newText =
+      parsed.prefix && completion.kind == 'utility'
+        ? completion.value.slice(parsed.prefix.length + 1)
+        : completion.value
+
+    const textEdit = {
+      newText,
+      range: {
+        start: context.toPosition(Math.max(0, parsed.tokenStartOffset - parsed.token.length)),
+        end: context.toPosition(parsed.tokenStartOffset),
+      },
+    }
+
+    return {
+      kind: completion.color
+        ? vscode.CompletionItemKind.Color
+        : completion.kind == 'screen'
+        ? vscode.CompletionItemKind.EnumMember
+        : completion.kind == 'variant'
+        ? vscode.CompletionItemKind.Module
+        : vscode.CompletionItemKind.Property,
+      data: completion.kind,
+      label,
+      preselect: false,
+      filterText: parsed.rule,
+      sortText: sortedIndex.toString().padStart(8, '0'),
+      detail: completion.detail,
+      documentation: {
+        kind: vscode.MarkupKind.Markdown,
+        value: [
+          completion.css && '```css\n' + completion.css + '\n```',
+          completion.theme &&
+            '**Theme**\n\n```json\n' +
+              JSON.stringify(
+                {
+                  [completion.theme.section]: {
+                    [completion.theme.key]: completion.theme.value,
+                  },
+                },
+                null,
+                2,
+              ) +
+              '\n```',
+          this.configurationManager.config.debug &&
+            '**Parsed**\n\n```json\n' +
+              JSON.stringify(
+                {
+                  ...parsed,
+                  sortedIndex,
+                  textEdit,
+                },
+                null,
+                2,
+              ) +
+              '\n```',
+          this.configurationManager.config.debug &&
+            '**Completion**\n\n```json\n' + JSON.stringify(completion, null, 2) + '\n```',
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
+      },
+
+      textEdit,
+    }
+  }
+
   private getCompletionItems(
     context: TemplateContext,
     position: ts.LineAndCharacter,
@@ -219,158 +368,207 @@ export class TailwindjsTemplateLanguageService implements TemplateLanguageServic
       }] ${JSON.stringify(context.text)}`,
     )
 
-    // Const cached = this._completionsCache.getCached(context, position)
+    const cached = this._completionsCache.getCached(context, position)
 
-    // if (cached) {
-    //   return cached
-    // }
-
-    const { token, variants, prefix, directive, tokenStartOffset } = parse(
-      context.text,
-      context.toOffset(position),
-    )
+    if (cached) {
+      return cached
+    }
 
     const completions: vscode.CompletionList = {
-      isIncomplete: false,
+      isIncomplete: true,
       items: [],
     }
 
-    // Sort order
-    // 1. ! - best guess
-    // 2. # - directive group
-    // 3. $ - directive
-    // 4. & - prefix self
-    // 5. : - variant
-    // 6. @ - screen
-    completions.items = [
-      ...Object.keys(this.state.screens)
-        .filter((screen) => variants.length === 0 && screen.startsWith(token))
-        .map((screen) => ({
-          kind: vscode.CompletionItemKind.EnumMember,
-          data: 'screen',
-          label: `${screen}:`,
-          sortText: `@${screen}`,
-          detail: `breakpoint @ ${this.state.screens[screen]}`,
-          documentation: {
-            kind: vscode.MarkupKind.PlainText,
-            value: `@media (min-width: ${this.state.screens[screen]})`,
-          },
-          textEdit: {
-            newText: `${screen}:`.slice(token.length),
-            range: {
-              start: context.toPosition(tokenStartOffset + token.length),
-              end: position,
-            },
-          },
-        })),
-      ...this.state.variants
-        .filter((variant) => !variants.includes(':' + variant) && variant.startsWith(token))
-        .map((variant) => ({
-          kind: vscode.CompletionItemKind.Unit,
-          data: 'variant',
-          label: `${variant}:`,
-          detail: `pseudo-class ${variant}`,
-          documentation: { kind: vscode.MarkupKind.PlainText, value: `Add ${variant} variant` },
-          textEdit: {
-            newText: `${variant}:`.slice(token.length),
-            range: {
-              start: context.toPosition(tokenStartOffset + token.length),
-              end: position,
-            },
-          },
-        })),
-      // Start a new directive group
-      ...Object.keys(this.state.directives)
-        .filter((key) => key.startsWith(directive))
-        // Tex
-        // text-current
-        // => text
-        // ring-off
-        // ring-offset-70
-        // => ring-offset
-        .map((key) => {
-          const nextDash = key.indexOf('-', directive.length)
-          return nextDash >= 0 ? key.slice(0, nextDash) : ''
-        })
-        .filter((group, index, groups) => group && groups.indexOf(group) === index)
-        .map((key) => ({
-          kind: vscode.CompletionItemKind.Module,
-          data: 'directive-group',
-          label: prefix ? key.slice(prefix.length + 1) : key,
-          sortText: `#${key}`,
-          detail: `${key}(...)`,
-          documentation: { kind: vscode.MarkupKind.PlainText, value: `Start a new ${key} group` },
-          textEdit: {
-            newText: (prefix ? key.slice(prefix.length + 1) : key).slice(token.length),
-            range: {
-              start: context.toPosition(tokenStartOffset + token.length),
-              end: position,
-            },
-          },
-        })),
-      // Insert directive
-      // tex
-      // text-current
-      // => text
-      // ring-off
-      // ring-offset-70
-      // => ring-offset
-      ...Object.keys(this.state.directives)
-        .filter((key) => key.startsWith(directive))
-        .map((key) => ({
-          kind:
-            key === 'text-black'
-              ? vscode.CompletionItemKind.Color
-              : vscode.CompletionItemKind.Property,
-          data: 'directive',
-          label: prefix ? key.slice(prefix.length + 1) : key,
-          sortText: `$${naturalExpand(key)}`,
-          // VS Code bug causes '0' to not display in some cases
-          detail: key === '0' ? '0 ' : key,
-          // TODO https://github.com/tailwindlabs/tailwindcss-intellisense/blob/264cdc0c5e6fdbe1fee3c2dc338354235277ed08/packages/tailwindcss-language-service/src/util/color.ts#L28
-          documentation:
-            key === 'text-black'
-              ? '#ff0000'
-              : {
-                  kind: vscode.MarkupKind.Markdown,
-                  value: [
-                    '```css',
-                    '.' +
-                      (variants.length === 0 ? '' : variants.join('').slice(1) + ':') +
-                      this.state.directives[key].selector.slice(1) +
-                      ' {',
-                    ...Object.entries(this.state.directives[key].properties).map(
-                      ([property, value]) => `  ${property}: ${value};`,
-                    ),
-                    '}',
-                    '```',
-                  ].join('\n'),
-                },
-          textEdit: {
-            newText: (prefix ? key.slice(prefix.length + 1) : key).slice(token.length),
-            range: {
-              start: context.toPosition(tokenStartOffset + token.length),
-              end: position,
-            },
-          },
-        })),
+    const { completions: twindCompletions } = this._twind
+
+    const parsed = parse(context.text, context.toOffset(position))
+
+    const hasScreenVariant = parsed.variants.some((x) => twindCompletions.screens.includes(x))
+
+    const screens = hasScreenVariant
+      ? []
+      : twindCompletions.tokens.filter((completion) => completion.kind == 'screen')
+
+    const variants = twindCompletions.tokens.filter(
+      (completion) => completion.kind == 'variant' && !parsed.variants.includes(completion.value),
+    )
+
+    const utilities = twindCompletions.tokens.filter(
+      (completion) =>
+        (completion.kind == 'utility' && !parsed.prefix) ||
+        completion.value.startsWith(parsed.prefix + '-'),
+    )
+
+    // TODO Start a new directive group
+    const matched = [
+      ...matchSorter(screens, prepareText(parsed.token), {
+        threshold: matchSorter.rankings.MATCHES,
+        keys: [
+          (completion) => prepareText(naturalExpand(completion.detail) + ' ' + completion.value),
+        ],
+      }),
+      ...matchSorter(utilities, prepareText(parsed.directive), {
+        threshold: matchSorter.rankings.ACRONYM,
+        keys: [(completion) => prepareText(naturalExpand(completion.value))],
+        sorter: (items) =>
+          items.sort((a, b) => {
+            if (a.rankedValue[0] == '-' && b.rankedValue[0] != '-') {
+              return 1
+            }
+
+            if (a.rankedValue[0] != '-' && b.rankedValue[0] == '-') {
+              return -1
+            }
+
+            return defaultBaseSortFn(a, b)
+          }),
+      }),
+      ...matchSorter(variants, prepareText(parsed.token), {
+        threshold: matchSorter.rankings.ACRONYM,
+        keys: [(completion) => prepareText(completion.value)],
+      }),
     ]
 
-    if (prefix && (!token || token === '&')) {
-      completions.items.push({
-        kind: vscode.CompletionItemKind.Snippet,
+    completions.items = matched.map((completion, index) =>
+      this.getCompletionItem(context, position, completion, parsed, index),
+    )
+
+    // this._completions.tokens.forEach((completion) => {
+    //   if (completion.kind != 'utility' && !completion.value.startsWith(parsed.token)) {
+    //     return
+    //   }
+
+    //   if (completion.kind == 'utility' && !completion.value.startsWith(parsed.directive)) {
+    //     return
+    //   }
+
+    //   if (completion.kind == 'screen' && hasScreenVariant) {
+    //     return
+    //   }
+
+    //   if (completion.kind == 'variant' && parsed.variants.includes(completion.value)) {
+    //     return
+    //   }
+
+    //   completions.items.push(this.getCompletionItem(context, position, completion, parsed))
+    // })
+
+    // completions.items = [
+    //   // Start a new directive group
+    //   ...Object.keys(this.state.directives)
+    //     .filter((key) => key.startsWith(directive))
+    //     // Tex
+    //     // text-current
+    //     // => text
+    //     // ring-off
+    //     // ring-offset-70
+    //     // => ring-offset
+    //     .map((key) => {
+    //       const nextDash = key.indexOf('-', directive.length)
+    //       return nextDash >= 0 ? key.slice(0, nextDash) : ''
+    //     })
+    //     .filter((group, index, groups) => group && groups.indexOf(group) === index)
+    //     .map((key) => ({
+    //       kind: vscode.CompletionItemKind.Module,
+    //       data: 'directive-group',
+    //       label: prefix ? key.slice(prefix.length + 1) : key,
+    //       sortText: `#${key}`,
+    //       detail: `${key}(...)`,
+    //       documentation: { kind: vscode.MarkupKind.PlainText, value: `Start a new ${key} group` },
+    //       textEdit: {
+    //         newText: (prefix ? key.slice(prefix.length + 1) : key).slice(token.length),
+    //         range: {
+    //           start: context.toPosition(tokenStartOffset + token.length),
+    //           end: position,
+    //         },
+    //       },
+    //     })),
+    // ]
+
+    if (parsed.prefix && (!parsed.token || parsed.token === '&')) {
+      completions.items.unshift({
+        kind: vscode.CompletionItemKind.Constant,
         label: `&`,
-        detail: prefix,
-        sortText: `&`,
+        detail: `${parsed.prefix}`,
+        sortText: `&${parsed.prefix}`,
+        documentation: this.configurationManager.config.debug
+          ? {
+              kind: vscode.MarkupKind.Markdown,
+              value: [
+                '**Parsed**\n\n```json\n' +
+                  JSON.stringify(
+                    {
+                      ...parsed,
+                      items: completions.items.map(({ label, filterText, sortText, textEdit }) => ({
+                        label,
+                        filterText,
+                        sortText,
+                        textEdit,
+                      })),
+                      matched: matched.map((x) => x.value),
+                      // utilities: utilities.map((x) => x.value),
+                    },
+                    null,
+                    2,
+                  ) +
+                  '\n```',
+              ]
+                .filter(Boolean)
+                .join('\n\n'),
+            }
+          : undefined,
         textEdit: {
-          newText: `&`.slice(token.length),
+          newText: `&`.slice(parsed.token.length),
           range: {
-            start: context.toPosition(tokenStartOffset + token.length),
-            end: position,
+            start: context.toPosition(Math.max(0, parsed.tokenStartOffset - parsed.token.length)),
+            end: context.toPosition(parsed.tokenStartOffset),
           },
         },
       })
     }
+
+    // if (this.configurationManager.config.debug) {
+    //   completions.items.unshift({
+    //     kind: vscode.CompletionItemKind.Constant,
+    //     label: `----`,
+    //     filterText: parsed.token,
+    //     preselect: true,
+    //     detail: parsed.directive,
+    //     sortText: `&${parsed.prefix}`,
+    //     documentation: {
+    //       kind: vscode.MarkupKind.Markdown,
+    //       value: [
+    //         this.configurationManager.config.debug &&
+    //           '**Parsed**\n\n```json\n' +
+    //             JSON.stringify(
+    //               {
+    //                 ...parsed,
+    //                 items: completions.items.map(({ label, filterText, sortText, textEdit }) => ({
+    //                   label,
+    //                   filterText,
+    //                   sortText,
+    //                   textEdit,
+    //                 })),
+    //                 matched: matched.map((x) => x.value),
+    //                 // utilities: utilities.map((x) => x.value),
+    //               },
+    //               null,
+    //               2,
+    //             ) +
+    //             '\n```',
+    //       ]
+    //         .filter(Boolean)
+    //         .join('\n\n'),
+    //     },
+    //     textEdit: {
+    //       newText: `&`.slice(parsed.token.length),
+    //       range: {
+    //         start: context.toPosition(parsed.tokenStartOffset + parsed.token.length),
+    //         end: position,
+    //       },
+    //     },
+    //   })
+    // }
 
     this._completionsCache.updateCached(context, position, completions)
 

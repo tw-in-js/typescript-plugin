@@ -4,7 +4,6 @@
 // https://github.com/tailwindlabs/tailwindcss-intellisense/tree/master/packages/tailwindcss-language-service
 
 import type * as ts from 'typescript/lib/tsserverlibrary'
-import { TailwindjsPlugin } from './plugin'
+import { TwindPlugin } from './plugin'
 
-export = (config: { typescript: typeof ts }): TailwindjsPlugin =>
-  new TailwindjsPlugin(config.typescript)
+export = (config: { typescript: typeof ts }): TwindPlugin => new TwindPlugin(config.typescript)

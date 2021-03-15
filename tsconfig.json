@@ -5,7 +5,7 @@
     // During development for Node v10.8 support
     "target": "es2018",
     "module": "CommonJS",
-    "lib": ["ESNext", "DOM"],
+    "lib": ["ESNext"],
     // ensure that nobody can accidentally use this config for a build
     "noEmit": true,
     "declaration": true,

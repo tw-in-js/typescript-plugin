@@ -2,13 +2,12 @@ import type * as ts from 'typescript/lib/tsserverlibrary'
 import type { TemplateSettings } from 'typescript-template-language-service-decorator'
 
 import { decorateWithTemplateLanguageService } from 'typescript-template-language-service-decorator'
-import { ConfigurationManager, TailwindjsPluginConfiguration } from './configuration'
-import { TailwindjsTemplateLanguageService } from './language-service'
+import { ConfigurationManager, TwindPluginConfiguration } from './configuration'
+import { TwindTemplateLanguageService } from './language-service'
 import { LanguageServiceLogger } from './logger'
 import { getSubstitutions } from './substituter'
-// Import { StyledVirtualDocumentFactory } from './_virtual-document-provider'
 
-export class TailwindjsPlugin {
+export class TwindPlugin {
   private readonly typescript: typeof ts
   private _logger?: LanguageServiceLogger
   private readonly _configManager = new ConfigurationManager()
@@ -26,21 +25,37 @@ export class TailwindjsPlugin {
     this._logger.log('config: ' + JSON.stringify(this._configManager.config))
 
     if (!isValidTypeScriptVersion(this.typescript)) {
-      this._logger.log('Invalid typescript version detected. TypeScript 3.x required.')
+      this._logger.log('Invalid typescript version detected. TypeScript 4.1 required.')
       return info.languageService
     }
+
+    // Set up decorator
+    // const proxy: ts.LanguageService = {
+    //   ...info.languageService,
+    //   getCompletionsAtPosition: (fileName, position, options) => {
+    //     // emmetCompletions: false
+    //     const prior = info.languageService.getCompletionsAtPosition(fileName, position, options)
+
+    //     logger.log(
+    //       'getCompletionsAtPosition: ' + JSON.stringify({ fileName, position, prior }, null, 2),
+    //     )
+
+    //     // prior.entries = prior.entries.filter((e) => e.name !== 'caller')
+    //     return prior
+    //   },
+    // }
 
     return decorateWithTemplateLanguageService(
       this.typescript,
       info.languageService,
       info.project,
-      new TailwindjsTemplateLanguageService(this.typescript, this._configManager, this._logger),
+      new TwindTemplateLanguageService(this.typescript, info, this._configManager, this._logger),
       getTemplateSettings(this._configManager, this._logger),
       { logger: this._logger },
     )
   }
 
-  public onConfigurationChanged(config: TailwindjsPluginConfiguration): void {
+  public onConfigurationChanged(config: TwindPluginConfiguration): void {
     if (this._logger) {
       this._logger.log('onConfigurationChanged')
     }
@@ -66,7 +81,7 @@ export function getTemplateSettings(
 }
 
 function isValidTypeScriptVersion(typescript: typeof ts): boolean {
-  const [major] = typescript.version.split('.')
+  const [major, minor] = typescript.version.split('.')
 
-  return Number(major) >= 3
+  return Number(major) > 4 || (Number(major) == 4 && Number(minor) >= 1)
 }

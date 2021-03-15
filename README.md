@@ -1,10 +1,16 @@
 # @twind/typescript-plugin
 
+<div align="center">
+
 > TypeScript language service plugin that adds IntelliSense for tailwindjs
 
 [![MIT License](https://flat.badgen.net/github/license/tw-in-js/typescript-plugin)](https://github.com/tw-in-js/typescript-plugin/blob/main/LICENSE)
 [![Latest Release](https://flat.badgen.net/npm/v/@twind/typescript-plugin?icon=npm&label)](https://www.npmjs.com/package/@twind/typescript-plugin)
 [![Github](https://flat.badgen.net/badge/icon/tw-in-js%2Ftypescript-plugin?icon=github&label)](https://github.com/tw-in-js/typescript-plugin)
+
+![Demo](https://raw.githubusercontent.com/tw-in-js/typescript-plugin/main/assets/demo.gif)
+
+</div>
 
 ---
 
@@ -29,7 +35,7 @@ Provides editor support for ```tw`...```` tagged template syntax including:
 
 - Autocomplete for [twind](https://github.com/tw-in-js/twind) classes
 - Warnings on unknown classes
-- Quick fixes for misspelled property names.
+- Warnings on unknown theme values
 
 ## Installation
 
@@ -39,7 +45,7 @@ npm install --save-dev typescript @twind/typescript-plugin
 
 ## Usage
 
-This plugin requires TypeScript 2.4 or later. It can provide intellisense in both JavaScript and TypeScript files within any editor that uses TypeScript to power their language features. This includes [VS Code](https://code.visualstudio.com), [Sublime with the TypeScript plugin](https://github.com/Microsoft/TypeScript-Sublime-Plugin), [Atom with the TypeScript plugin](https://atom.io/packages/atom-typescript), [Visual Studio](https://www.visualstudio.com), and others.
+This plugin requires TypeScript 4.1 or later. It can provide intellisense in both JavaScript and TypeScript files within any editor that uses TypeScript to power their language features. This includes [VS Code](https://code.visualstudio.com), [Sublime with the TypeScript plugin](https://github.com/Microsoft/TypeScript-Sublime-Plugin), [Atom with the TypeScript plugin](https://atom.io/packages/atom-typescript), [Visual Studio](https://www.visualstudio.com), and others.
 
 ### With VS Code
 
@@ -60,6 +66,16 @@ Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang
 ```
 
 Finally, run the `Select TypeScript version` command in VS Code to switch to use the workspace version of TypeScript for VS Code's JavaScript and TypeScript language support. You can find more information about managing typescript versions [in the VS Code documentation](https://code.visualstudio.com/docs/typescript/typescript-compiling#_using-the-workspace-version-of-typescript).
+
+By default VS Code will not trigger completions when editing "string" content, for example within JSX attribute values. Updating the `editor.quickSuggestions` setting may improve your experience, particularly when editing Tailwind classes within JSX:
+
+```json
+{
+  "editor.quickSuggestions": {
+    "strings": true
+  }
+}
+```
 
 ### With Sublime
 
@@ -199,7 +215,9 @@ yarn link @twind/typescript-plugin
 code . # Or launch editor/IDE what you like
 ```
 
-Of course, you can use other editor which communicates with tsserver .
+Of course, you can use other editor which communicates with tsserver.
+
+> To see typescript debug logs start your editor with `TSS_LOG="-logToFile true -file /path/to/tss.log -level verbose"`.
 
 ## License
 

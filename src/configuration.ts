@@ -1,13 +1,15 @@
-export interface TailwindjsPluginConfiguration {
+export interface TwindPluginConfiguration {
   readonly tags: ReadonlyArray<string>
+  readonly debug: boolean
   // Readonly validate: boolean;
   // readonly lint: { [key: string]: any };
   // readonly emmet: { [key: string]: any };
 }
 
 export class ConfigurationManager {
-  private static readonly defaultConfiguration: TailwindjsPluginConfiguration = {
+  private static readonly defaultConfiguration: TwindPluginConfiguration = {
     tags: ['tw', 'apply'],
+    debug: false,
     // Validate: true,
     // lint: {
     //     emptyRules: 'ignore',
@@ -17,16 +19,21 @@ export class ConfigurationManager {
 
   private readonly _configUpdatedListeners = new Set<() => void>()
 
-  public get config(): TailwindjsPluginConfiguration {
+  public get config(): TwindPluginConfiguration {
     return this._configuration
   }
 
-  private _configuration: TailwindjsPluginConfiguration = ConfigurationManager.defaultConfiguration
+  private _configuration: TwindPluginConfiguration = ConfigurationManager.defaultConfiguration
 
-  public updateFromPluginConfig(config: TailwindjsPluginConfiguration): void {
-    this._configuration = {
+  public updateFromPluginConfig(config: Partial<TwindPluginConfiguration> = {}): void {
+    const mergedConfig = {
       ...ConfigurationManager.defaultConfiguration,
       ...config,
+    }
+
+    this._configuration = {
+      ...mergedConfig,
+      debug: 'true' == String(mergedConfig.debug),
     }
 
     for (const listener of this._configUpdatedListeners) {
