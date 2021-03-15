@@ -75,7 +75,7 @@ export function getTemplateSettings(
     enableForStringWithSubstitutions: true,
     getSubstitutions(templateString, spans): string {
       logger.log(`getSubstitutions: ${JSON.stringify(templateString)} (${JSON.stringify(spans)})`)
-      return getSubstitutions(templateString, spans)
+      return getSubstitutions(/* templateString, spans */)
     },
   }
 }
