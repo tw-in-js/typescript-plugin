@@ -30,7 +30,10 @@
     "build": "distilt",
     "format": "prettier --write --ignore-path .gitignore .",
     "lint": "eslint --ext .js,.ts --ignore-path .gitignore .",
+    "postlint": "tsc",
     "lint:fix": "yarn lint -- --fix",
+    "test": "uvu -r esm -r test-env.js",
+    "test:watch": "watchlist src -- yarn test",
     "release": "npx np --contents dist",
     "version": "yarn build"
   },
@@ -108,11 +111,15 @@
     "@typescript-eslint/eslint-plugin": "^4.9.1",
     "@typescript-eslint/parser": "^4.9.1",
     "distilt": "^0.10.1",
+    "esbuild-register": "^2.3.0",
     "eslint": "^7.15.0",
     "eslint-config-prettier": "^7.0.0",
     "eslint-plugin-prettier": "^3.2.0",
+    "esm": "^3.2.25",
     "execa": "^5.0.0",
-    "prettier": "^2.0.5"
+    "prettier": "^2.0.5",
+    "uvu": "^0.5.1",
+    "watchlist": "^0.2.3"
   },
   "publishConfig": {
     "access": "public",

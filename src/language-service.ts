@@ -13,8 +13,8 @@ import type { ConfigurationManager } from './configuration'
 
 import { defaultBaseSortFn, matchSorter } from 'match-sorter'
 
-import { parse, ParsedRule } from './parse'
 import { CompletionToken, Twind } from './twind'
+import { parse, Rule } from './parser'
 
 function arePositionsEqual(left: ts.LineAndCharacter, right: ts.LineAndCharacter): boolean {
   return left.line === right.line && left.character === right.character
@@ -35,7 +35,8 @@ function arePositionsEqual(left: ts.LineAndCharacter, right: ts.LineAndCharacter
 
 const enum ErrorCodes {
   UNKNOWN_DIRECTIVE = -2020,
-  UNKNOWN_THEME_VALUE = -2021,
+  UNKNOWN_VARIANT = -2021,
+  UNKNOWN_THEME_VALUE = -2022,
 }
 
 const pad = (n: string): string => n.padStart(8, '0')
@@ -121,124 +122,107 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
   ): ts.CompletionEntryDetails {
     const item = this.getCompletionItems(context, position).items.find((x) => x.label === name)
 
-    if (!item) {
-      return {
-        name,
-        kind: this.typescript.ScriptElementKind.unknown,
-        kindModifiers: '',
-        tags: [],
-        displayParts: toDisplayParts(name),
-        documentation: [],
-      }
+    if (item) {
+      return translateCompletionItemsToCompletionEntryDetails(this.typescript, item)
     }
 
-    return translateCompletionItemsToCompletionEntryDetails(this.typescript, item)
+    return {
+      name,
+      kind: this.typescript.ScriptElementKind.unknown,
+      kindModifiers: '',
+      tags: [],
+      displayParts: toDisplayParts(name),
+      documentation: [],
+    }
   }
 
   public getQuickInfoAtPosition(
     context: TemplateContext,
     position: ts.LineAndCharacter,
   ): ts.QuickInfo | undefined {
-    const offset = context.toOffset(position)
+    const rules = parse(context.text, context.toOffset(position))
 
-    const find = (char: string): number => {
-      const index = context.text.indexOf(char, offset)
-      return index >= offset ? index : context.text.length
-    }
+    const rule = rules.map((rule) => rule.value).join(' ')
 
-    const nextBoundary = Math.min(find(')'), find(' '), find('\t'), find('\n'), find('\r'))
-
-    if (nextBoundary == offset) {
+    if (!rule) {
       return undefined
     }
 
-    const parsed = parse(context.text, nextBoundary)
-
-    const end = parsed.tokenStartOffset + (parsed.token == '&' ? -1 : 0)
-    const start = Math.max(0, end - parsed.token.length)
-    const rule = parsed.prefix ? parsed.rule.replace('&', parsed.prefix) : parsed.rule
-
     const css = this._twind.css(rule)
 
-    if (css) {
-      return {
-        kind: translateCompletionItemKind(this.typescript, vscode.CompletionItemKind.Property),
-        kindModifiers: '',
-        textSpan: {
-          start,
-          length: end - start,
-        },
-        displayParts: toDisplayParts(rule),
-        // displayParts: [],
-        documentation: toDisplayParts({
-          kind: 'markdown',
-          value: '```css\n' + css + '\n```',
-        }),
-        tags: [],
-      }
-    }
+    const span = rules
+      .flatMap((rule) => rule.spans)
+      .reduce((a, b) => ({
+        start: Math.min(a.start, b.start),
+        end: Math.max(a.end, b.end),
+      }))
 
-    return undefined
+    return {
+      kind: translateCompletionItemKind(this.typescript, vscode.CompletionItemKind.Property),
+      kindModifiers: '',
+      textSpan: {
+        start: span.start,
+        length: span.end - span.start,
+      },
+      displayParts: toDisplayParts(rule),
+      documentation: css
+        ? toDisplayParts({
+            kind: 'markdown',
+            value: '```css\n' + css + '\n```',
+          })
+        : undefined,
+      tags: [],
+    }
   }
 
   public getSemanticDiagnostics(context: TemplateContext): ts.Diagnostic[] {
-    const diagnostics: ts.Diagnostic[] = []
+    return parse(context.text).flatMap((rule): ts.Diagnostic[] =>
+      (this._twind.getDiagnostics(rule.value) || [])
+        .map((info): ts.Diagnostic | undefined => {
+          switch (info.id) {
+            case 'UNKNOWN_DIRECTIVE': {
+              return {
+                messageText: `Unknown utility "${rule.name}"`,
+                start: rule.loc.start,
+                length: rule.loc.end - rule.loc.start,
+                file: context.node.getSourceFile(),
+                category: this.typescript.DiagnosticCategory.Warning,
+                code: ErrorCodes.UNKNOWN_DIRECTIVE,
+              }
+            }
+            case 'UNKNOWN_THEME_VALUE': {
+              if (info.key) {
+                const [section, ...key] = info.key?.split('.')
 
-    const { text } = context
-
-    for (let offset = 0; offset <= text.length; offset++) {
-      if (') \t\n\r'.includes(text[offset]) || offset == text.length) {
-        const parsed = parse(context.text, offset)
-
-        const rule = parsed.prefix ? parsed.rule.replace('&', parsed.prefix) : parsed.rule
-
-        if (rule) {
-          const end = offset
-          const start = Math.max(0, end - parsed.token.length)
-
-          this.logger.log(
-            `getDiagnostics: ${rule} ${parsed.token} - ${parsed.tokenStartOffset} ${start}:${end}`,
-          )
-
-          this._twind.getDiagnostics(rule)?.some((info) => {
-            switch (info.id) {
-              case 'UNKNOWN_DIRECTIVE': {
-                diagnostics.push({
-                  messageText: `Unknown utility "${
-                    parsed.prefix ? parsed.directive.replace('&', parsed.prefix) : parsed.directive
-                  }"`,
-                  start: start,
-                  length: end - start,
+                return {
+                  messageText: `Unknown theme value "${section}[${key.join('.')}]"`,
+                  start: rule.loc.start,
+                  length: rule.loc.end - rule.loc.start,
                   file: context.node.getSourceFile(),
                   category: this.typescript.DiagnosticCategory.Warning,
-                  code: ErrorCodes.UNKNOWN_DIRECTIVE,
-                })
-                return true
-              }
-              case 'UNKNOWN_THEME_VALUE': {
-                if (info.key) {
-                  const [section, ...key] = info.key?.split('.')
-
-                  diagnostics.push({
-                    messageText: `Unknown theme value "${section}[${key.join('.')}]"`,
-                    start: start,
-                    length: end - start,
-                    file: context.node.getSourceFile(),
-                    category: this.typescript.DiagnosticCategory.Warning,
-                    code: ErrorCodes.UNKNOWN_THEME_VALUE,
-                  })
-                  return true
+                  code: ErrorCodes.UNKNOWN_THEME_VALUE,
                 }
               }
             }
-
-            return false
-          })
-        }
-      }
-    }
-
-    return diagnostics
+          }
+        })
+        // check if every rule.variants exist
+        .concat(
+          rule.variants
+            .filter((variant) => !this._twind.completions.variants.has(variant.raw))
+            .map(
+              (variant): ts.Diagnostic => ({
+                messageText: `Unknown variant "${variant.raw}"`,
+                start: variant.loc.start,
+                length: variant.loc.end - variant.loc.start,
+                file: context.node.getSourceFile(),
+                category: this.typescript.DiagnosticCategory.Warning,
+                code: ErrorCodes.UNKNOWN_VARIANT,
+              }),
+            ),
+        )
+        .filter((value): value is ts.Diagnostic => Boolean(value)),
+    )
   }
 
   // public getSupportedCodeFixes(): number[] {
@@ -284,24 +268,24 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     context: TemplateContext,
     position: ts.LineAndCharacter,
     completion: CompletionToken,
-    parsed: ParsedRule,
+    rule: Rule,
     sortedIndex: number,
   ): vscode.CompletionItem {
     const label =
-      parsed.prefix && completion.kind == 'utility'
-        ? completion.label.slice(parsed.prefix.length + 1)
+      rule.prefix && completion.kind == 'utility'
+        ? completion.label.slice(rule.prefix.length + 1)
         : completion.label
 
     const newText =
-      parsed.prefix && completion.kind == 'utility'
-        ? completion.value.slice(parsed.prefix.length + 1)
+      rule.prefix && completion.kind == 'utility'
+        ? completion.value.slice(rule.prefix.length + 1)
         : completion.value
 
     const textEdit = {
       newText,
       range: {
-        start: context.toPosition(Math.max(0, parsed.tokenStartOffset - parsed.token.length)),
-        end: context.toPosition(parsed.tokenStartOffset),
+        start: context.toPosition(rule.loc.start),
+        end: context.toPosition(rule.loc.end),
       },
     }
 
@@ -316,7 +300,7 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
       data: completion.kind,
       label,
       preselect: false,
-      filterText: parsed.rule,
+      filterText: rule.value,
       sortText: sortedIndex.toString().padStart(8, '0'),
       detail: completion.detail,
       documentation: {
@@ -339,7 +323,7 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
             '**Parsed**\n\n```json\n' +
               JSON.stringify(
                 {
-                  ...parsed,
+                  ...rule,
                   sortedIndex,
                   textEdit,
                 },
@@ -381,33 +365,38 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
 
     const { completions: twindCompletions } = this._twind
 
-    const parsed = parse(context.text, context.toOffset(position))
+    const rule = parse(context.text, context.toOffset(position), true)
 
-    const hasScreenVariant = parsed.variants.some((x) => twindCompletions.screens.includes(x))
+    const hasScreenVariant = rule.variants.some((variant) =>
+      twindCompletions.screens.has(variant.raw),
+    )
 
     const screens = hasScreenVariant
       ? []
       : twindCompletions.tokens.filter((completion) => completion.kind == 'screen')
 
     const variants = twindCompletions.tokens.filter(
-      (completion) => completion.kind == 'variant' && !parsed.variants.includes(completion.value),
+      (completion) =>
+        completion.kind == 'variant' &&
+        !rule.variants.some((variant) => variant.raw === completion.value),
     )
 
     const utilities = twindCompletions.tokens.filter(
       (completion) =>
-        (completion.kind == 'utility' && !parsed.prefix) ||
-        completion.value.startsWith(parsed.prefix + '-'),
+        completion.kind == 'utility' &&
+        (!rule.negated || completion.value.startsWith('-')) &&
+        (!rule.prefix || completion.value.startsWith(rule.prefix + '-')),
     )
 
     // TODO Start a new directive group
     const matched = [
-      ...matchSorter(screens, prepareText(parsed.token), {
+      ...matchSorter(screens, prepareText(rule.raw), {
         threshold: matchSorter.rankings.MATCHES,
         keys: [
           (completion) => prepareText(naturalExpand(completion.detail) + ' ' + completion.value),
         ],
       }),
-      ...matchSorter(utilities, prepareText(parsed.directive), {
+      ...matchSorter(utilities, prepareText(rule.raw), {
         threshold: matchSorter.rankings.ACRONYM,
         keys: [(completion) => prepareText(naturalExpand(completion.value))],
         sorter: (items) =>
@@ -423,14 +412,14 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
             return defaultBaseSortFn(a, b)
           }),
       }),
-      ...matchSorter(variants, prepareText(parsed.token), {
+      ...matchSorter(variants, prepareText(rule.raw), {
         threshold: matchSorter.rankings.ACRONYM,
         keys: [(completion) => prepareText(completion.value)],
       }),
     ]
 
     completions.items = matched.map((completion, index) =>
-      this.getCompletionItem(context, position, completion, parsed, index),
+      this.getCompletionItem(context, position, completion, rule, index),
     )
 
     // this._completions.tokens.forEach((completion) => {
@@ -485,12 +474,12 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     //     })),
     // ]
 
-    if (parsed.prefix && (!parsed.token || parsed.token === '&')) {
+    if (rule.prefix && (!rule.raw || rule.raw === '&')) {
       completions.items.unshift({
         kind: vscode.CompletionItemKind.Constant,
         label: `&`,
-        detail: `${parsed.prefix}`,
-        sortText: `&${parsed.prefix}`,
+        detail: `${rule.prefix}`,
+        sortText: `&${rule.prefix}`,
         documentation: this.configurationManager.config.debug
           ? {
               kind: vscode.MarkupKind.Markdown,
@@ -498,7 +487,7 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
                 '**Parsed**\n\n```json\n' +
                   JSON.stringify(
                     {
-                      ...parsed,
+                      ...rule,
                       items: completions.items.map(({ label, filterText, sortText, textEdit }) => ({
                         label,
                         filterText,
@@ -518,10 +507,10 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
             }
           : undefined,
         textEdit: {
-          newText: `&`.slice(parsed.token.length),
+          newText: '&',
           range: {
-            start: context.toPosition(Math.max(0, parsed.tokenStartOffset - parsed.token.length)),
-            end: context.toPosition(parsed.tokenStartOffset),
+            start: context.toPosition(rule.loc.start),
+            end: context.toPosition(rule.loc.end),
           },
         },
       })

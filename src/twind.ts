@@ -187,7 +187,8 @@ export interface CompletionToken {
 
 export interface Completions {
   tokens: CompletionToken[]
-  screens: string[]
+  screens: Set<string>
+  variants: Set<string>
 }
 
 export class Twind {
@@ -297,7 +298,7 @@ export class Twind {
     const { state } = this
 
     if (!state) {
-      return { screens: [], tokens: [] }
+      return { screens: new Set(), variants: new Set(), tokens: [] }
     }
 
     const { program, config, sheet, tw, context } = state
@@ -390,7 +391,8 @@ export class Twind {
     const INTERPOLATION_RE = /{{([^}]+)}}/
 
     const completionTokens = new Map<string, CompletionToken>()
-    const screens = Object.keys(theme('screens')(context)).map((x) => x + ':')
+    const screens = new Set(Object.keys(theme('screens')(context)).map((x) => x + ':'))
+    tokens.unshift(...screens)
 
     tokens.forEach((directive): void => {
       const match = INTERPOLATION_RE.exec(directive)
@@ -444,7 +446,7 @@ export class Twind {
             completionTokens.set(
               className,
               createCompletionToken(className, {
-                kind: screens.includes(className) ? 'screen' : undefined,
+                kind: screens.has(className) ? 'screen' : undefined,
                 raw: directive,
                 theme: { section: sectionKey as keyof Theme, key, value: section[key] },
               }),
@@ -474,9 +476,18 @@ export class Twind {
       }
     })
 
+    const variants = new Set<string>()
+
+    for (const completionToken of completionTokens.values()) {
+      if (completionToken.kind !== 'utility') {
+        variants.add(completionToken.value)
+      }
+    }
+
     return {
       tokens: [...completionTokens.values()],
       screens,
+      variants,
     }
   }
 }
