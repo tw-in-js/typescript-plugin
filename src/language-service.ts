@@ -319,7 +319,9 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
         ? vscode.CompletionItemKind.EnumMember
         : completion.kind == 'variant'
         ? vscode.CompletionItemKind.Module
-        : vscode.CompletionItemKind.Property,
+        : completion.interpolation
+        ? vscode.CompletionItemKind.Variable
+        : vscode.CompletionItemKind.Constant,
       data: completion.kind,
       label:
         rule.prefix && completion.label !== '&' && completion.kind == 'utility'
@@ -518,6 +520,8 @@ function translateCompletionItemKind(
     case vscode.CompletionItemKind.Unit:
     case vscode.CompletionItemKind.Value:
       return typescript.ScriptElementKind.constElement
+    case vscode.CompletionItemKind.Variable:
+      return typescript.ScriptElementKind.variableElement
     case vscode.CompletionItemKind.Enum:
       return typescript.ScriptElementKind.enumElement
     case vscode.CompletionItemKind.EnumMember:

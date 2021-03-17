@@ -27,17 +27,39 @@ export class TwindPlugin {
       return info.languageService
     }
 
-    // Set up decorator
-    // const proxy: ts.LanguageService = {
+    // // Set up decorator
+    // const { languageService } = info
+
+    // info.languageService = {
     //   ...info.languageService,
-    //   getCompletionsAtPosition: (fileName, position, options) => {
-    //     // emmetCompletions: false
-    //     const prior = info.languageService.getCompletionsAtPosition(fileName, position, options)
+
+    //   getCompletionEntrySymbol(fileName, position, name, source) {
+    //     const prior = languageService.getCompletionEntrySymbol(fileName, position, name, source)
 
     //     logger.log(
-    //       'getCompletionsAtPosition: ' + JSON.stringify({ fileName, position, prior }, null, 2),
+    //       'getCompletionEntrySymbol: ' + JSON.stringify({ fileName, position, name, source }),
     //     )
 
+    //     // prior.entries = prior.entries.filter((e) => e.name !== 'caller')
+    //     return prior
+    //   },
+    //   getCompletionsAtPosition: (fileName, position, options) => {
+    //     // emmetCompletions: false
+    //     const prior = languageService.getCompletionsAtPosition(fileName, position, options)
+
+    //     // TODO match file [t]sx?
+    //     const contents = info.project.readFile(fileName)
+
+    //     // logger.log('getCompletionsAtPosition: ' + JSON.stringify({ fileName, position }))
+
+    //     console.log('')
+    //     console.log('')
+    //     console.log(
+    //       'getCompletionsAtPosition',
+    //       JSON.stringify({ fileName, position, options, prior }, null, 2),
+    //     )
+    //     console.log('')
+    //     console.log('')
     //     // prior.entries = prior.entries.filter((e) => e.name !== 'caller')
     //     return prior
     //   },
