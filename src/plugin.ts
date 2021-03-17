@@ -20,8 +20,6 @@ export class TwindPlugin {
     this._logger = new LanguageServiceLogger(info)
     this._configManager.updateFromPluginConfig(info.config)
 
-    console.log('config: ' + JSON.stringify(this._configManager.config))
-
     this._logger.log('config: ' + JSON.stringify(this._configManager.config))
 
     if (!isValidTypeScriptVersion(this.typescript)) {

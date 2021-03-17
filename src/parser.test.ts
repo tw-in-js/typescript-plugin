@@ -42,7 +42,7 @@ const test = suite('Parser')
         negated: false,
         loc: { start: 6, end: 15 },
         spans: [{ start: 0, end: 15 }],
-        variants: [{ name: 'hover', raw: 'hover:', loc: { start: 0, end: 6 } }],
+        variants: [{ name: 'hover', raw: 'hover:', value: 'hover:', loc: { start: 0, end: 6 } }],
       },
     ],
   ],
@@ -52,7 +52,7 @@ const test = suite('Parser')
       {
         raw: '-mx-5!',
         value: '-mx-5!',
-        name: 'mx-5',
+        name: '-mx-5',
         prefix: '',
         important: true,
         negated: true,
@@ -68,7 +68,7 @@ const test = suite('Parser')
       {
         raw: '5',
         value: '-mx-5',
-        name: 'mx-5',
+        name: '-mx-5',
         prefix: '-mx',
         important: false,
         negated: true,
@@ -82,7 +82,7 @@ const test = suite('Parser')
       {
         raw: '2!',
         value: 'sm:-mx-2!',
-        name: 'mx-2',
+        name: '-mx-2',
         prefix: '-mx',
         important: true,
         negated: true,
@@ -94,6 +94,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'sm:',
+            value: 'sm:',
             name: 'sm',
             loc: { start: 6, end: 9 },
           },
@@ -102,7 +103,7 @@ const test = suite('Parser')
       {
         raw: '8',
         value: 'xl:-mx-8',
-        name: 'mx-8',
+        name: '-mx-8',
         prefix: '-mx',
         important: false,
         negated: true,
@@ -114,6 +115,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'xl:',
+            value: 'xl:',
             name: 'xl',
             loc: { start: 12, end: 15 },
           },
@@ -139,6 +141,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'focus:',
+            value: 'focus:',
             name: 'focus',
             loc: { start: 5, end: 11 },
           },
@@ -208,6 +211,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'hover:',
+            value: 'hover:',
             name: 'hover',
             loc: { start: 8, end: 14 },
           },
@@ -366,6 +370,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -417,6 +422,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -457,6 +463,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -497,6 +504,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -557,6 +565,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -583,6 +592,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -609,6 +619,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -635,6 +646,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -675,6 +687,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -726,6 +739,7 @@ const test = suite('Parser')
         variants: [
           {
             raw: 'md:',
+            value: 'md:',
             name: 'md',
             loc: { start: 18, end: 21 },
           },
@@ -766,6 +780,84 @@ const test = suite('Parser')
       negated: false,
       loc: { start: 0, end: 0 },
       spans: [{ start: 0, end: 0 }],
+      variants: [],
+    },
+  ],
+  [
+    'underline ',
+    9,
+    {
+      raw: 'underline',
+      value: 'underline',
+      name: 'underline',
+      prefix: '',
+      important: false,
+      negated: false,
+      loc: { start: 0, end: 9 },
+      spans: [{ start: 0, end: 9 }],
+      variants: [],
+    },
+  ],
+  [
+    'underline ',
+    10,
+    {
+      raw: '',
+      value: '',
+      name: '',
+      prefix: '',
+      important: false,
+      negated: false,
+      loc: { start: 10, end: 10 },
+      spans: [{ start: 10, end: 10 }],
+      variants: [],
+    },
+  ],
+  [
+    'underline \t\n',
+    10,
+    {
+      raw: '',
+      value: '',
+      name: '',
+      prefix: '',
+      important: false,
+      negated: false,
+      loc: { start: 10, end: 10 },
+      spans: [{ start: 10, end: 10 }],
+      variants: [],
+    },
+  ],
+  [
+    'text( \t\n',
+    6,
+    {
+      raw: '',
+      value: 'text',
+      name: 'text',
+      prefix: 'text',
+      important: false,
+      negated: false,
+      loc: { start: 6, end: 6 },
+      spans: [
+        { start: 0, end: 4 },
+        { start: 6, end: 6 },
+      ],
+      variants: [],
+    },
+  ],
+  [
+    'mx-1 ',
+    4,
+    {
+      raw: 'mx-1',
+      value: 'mx-1',
+      name: 'mx-1',
+      prefix: '',
+      important: false,
+      negated: false,
+      loc: { start: 0, end: 4 },
+      spans: [{ start: 0, end: 4 }],
       variants: [],
     },
   ],

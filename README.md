@@ -31,9 +31,11 @@
 
 ## Features
 
-Provides editor support for ```tw`...```` tagged template syntax including:
+Provides editor support for `tw` tagged template syntax including:
 
-- Autocomplete for [twind](https://github.com/tw-in-js/twind) classes
+- Autocomplete for [twind](https://github.com/tw-in-js/twind) variants and classes
+- Details about the generated CSS
+- Support for grouping of variants and classes
 - Warnings on unknown classes
 - Warnings on unknown theme values
 - Warnings on unknown variants
@@ -48,7 +50,7 @@ npm install --save-dev typescript @twind/typescript-plugin
 
 This plugin requires TypeScript 4.1 or later. It can provide intellisense in both JavaScript and TypeScript files within any editor that uses TypeScript to power their language features. This includes [VS Code](https://code.visualstudio.com), [Sublime with the TypeScript plugin](https://github.com/Microsoft/TypeScript-Sublime-Plugin), [Atom with the TypeScript plugin](https://atom.io/packages/atom-typescript), [Visual Studio](https://www.visualstudio.com), and others.
 
-If you have a custom twind configuration you need to extract that into an own file. Create a `twind.config.{ts,js,cjs,mjs}` in the root , `src` or `public` folder. Then import it for use with setup. Here is example using a custom plugin:
+If you have a custom twind configuration you need to extract that into an own file. Create a `twind.config.{ts,js,cjs,mjs}` in the root , `src`, `config`, or `public` folder. Then import it for use with setup. Here is example using a custom plugin:
 
 ```js
 import { forms, formInput } from '@twind/forms'

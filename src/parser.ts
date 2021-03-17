@@ -1,13 +1,26 @@
 export interface Rule {
+  /**
+   * The string indictated by loc
+   */
   raw: string
 
+  /**
+   * The rule with all variants
+   */
   value: string
 
+  /**
+   * The utility name including `-` if it is negated.
+   */
   name: string
+
+  /**
+   * If this utility is within a prefix group the aggreated prefix.
+   */
   prefix: string
 
   /**
-   * Something like `-mx`
+   * Is the rule negated like `-mx`
    */
   negated: boolean
 
@@ -24,9 +37,14 @@ export interface Rule {
 
 export interface RuleVariant {
   /**
-   * Raw value like: `hover:` or `after::`
+   * The string indictated by loc
    */
   raw: string
+
+  /**
+   * The value like: `hover:` or `after::`
+   */
+  value: string
 
   /**
    * Name without last colon like: `hover` or `after:`
@@ -93,7 +111,7 @@ export function parse(input: string, position?: number, exact?: boolean): Rule[]
 }
 
 function toRuleVariant(node: Variant): RuleVariant {
-  return { raw: node.raw, name: node.name, loc: node.loc }
+  return { raw: node.raw, value: node.value, name: node.name, loc: node.loc }
 }
 
 function toRule(identifier: Identifier): Rule {
@@ -132,10 +150,12 @@ function toRule(identifier: Identifier): Rule {
     }
   }
 
-  rule.name = names.reduce(
-    (name, part) => (part === '&' ? name : name && part ? `${name}-${part}` : name || part),
-    '',
-  )
+  rule.name =
+    (rule.negated ? '-' : '') +
+    names.reduce(
+      (name, part) => (part === '&' ? name : name && part ? `${name}-${part}` : name || part),
+      '',
+    )
 
   rule.prefix = names
     .slice(0, -1)
@@ -149,10 +169,7 @@ function toRule(identifier: Identifier): Rule {
   }
 
   rule.value =
-    rule.variants.map((variant) => variant.raw).join('') +
-    (rule.negated ? '-' : '') +
-    rule.name +
-    (rule.important ? '!' : '')
+    rule.variants.map((variant) => variant.value).join('') + rule.name + (rule.important ? '!' : '')
 
   return rule
 }
@@ -224,6 +241,11 @@ export interface Variant extends BaseNode {
    * Raw value like: `hover:` or `after::`
    */
   raw: string
+
+  /**
+   * The value like: `hover:` or `after::`
+   */
+  value: string
 
   /**
    * Name without last colon like: `hover` or `after:`
@@ -329,8 +351,8 @@ export function astish(text: string, atPosition = Infinity): Group {
     }
   }
 
-  // Consume remaining buffer
-  if (buffer) {
+  // Consume remaining buffer or completion triggered at the end
+  if (buffer || atPosition === text.length) {
     node.next = createIdentifier(node, parent, buffer, start, true)
   }
 
@@ -370,6 +392,8 @@ function createVariant(node: Node, parent: Node, raw: string, start: number): Va
      * Raw value like: `hover:` or `after::`
      */
     raw,
+
+    value: raw,
 
     /**
      * Name without last colon like: `hover` or `after:`

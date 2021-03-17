@@ -11,14 +11,14 @@ import * as vscode from 'vscode-languageserver-types'
 
 import type { ConfigurationManager } from './configuration'
 
-import { defaultBaseSortFn, matchSorter } from 'match-sorter'
+import { matchSorter, MatchSorterOptions } from 'match-sorter'
 
 import { CompletionToken, Twind } from './twind'
 import { parse, Rule } from './parser'
 
-function arePositionsEqual(left: ts.LineAndCharacter, right: ts.LineAndCharacter): boolean {
-  return left.line === right.line && left.character === right.character
-}
+// function arePositionsEqual(left: ts.LineAndCharacter, right: ts.LineAndCharacter): boolean {
+//   return left.line === right.line && left.character === right.character
+// }
 
 // !function isAfter(left: vscode.Position, right: vscode.Position): boolean {
 //   return right.line > left.line || (right.line === left.line && right.character >= left.character)
@@ -39,58 +39,29 @@ const enum ErrorCodes {
   UNKNOWN_THEME_VALUE = -2022,
 }
 
-const pad = (n: string): string => n.padStart(8, '0')
+// Use a tie-breaker sorter that respects numbers
+const collator = new Intl.Collator(undefined, {
+  numeric: true,
+  caseFirst: 'false',
+})
 
-const naturalExpand = (value: number | string): string => ('' + value).replace(/\d+/g, pad)
+const baseSort: NonNullable<MatchSorterOptions<CompletionToken>['baseSort']> = (a, b) =>
+  collator.compare(a.item.label, b.item.label)
 
 // By default, match-sorter assumes spaces to be the word separator.
-// Lets split the text into whitespace spearated words
+// Lets split the text into whitespace separated words
 const prepareText = (value: string): string =>
   value
     .replace(/[A-Z]/g, ' $&')
     .replace(/(?<!^)[_-]/g, ' ')
     .replace(/(?<!^|\d)\d/g, ' $&')
     .replace(/\d(?!$|\d)/g, '$& ')
-
-class CompletionsCache {
-  private _cachedCompletionsFile?: string
-  private _cachedCompletionsPosition?: ts.LineAndCharacter
-  private _cachedCompletionsContent?: string
-  private _completions?: vscode.CompletionList
-
-  public getCached(
-    context: TemplateContext,
-    position: ts.LineAndCharacter,
-  ): vscode.CompletionList | undefined {
-    if (
-      this._completions &&
-      context.fileName === this._cachedCompletionsFile &&
-      this._cachedCompletionsPosition &&
-      arePositionsEqual(position, this._cachedCompletionsPosition) &&
-      context.text === this._cachedCompletionsContent
-    ) {
-      return this._completions
-    }
-  }
-
-  public updateCached(
-    context: TemplateContext,
-    position: ts.LineAndCharacter,
-    completions: vscode.CompletionList,
-  ): void {
-    this._cachedCompletionsFile = context.fileName
-    this._cachedCompletionsPosition = position
-    this._cachedCompletionsContent = context.text
-    this._completions = completions
-  }
-}
+    .replace(/\s+/g, ' ')
 
 export class TwindTemplateLanguageService implements TemplateLanguageService {
   private readonly typescript: typeof ts
-  private readonly info: ts.server.PluginCreateInfo
   private readonly configurationManager: ConfigurationManager
   private readonly logger: Logger
-  private readonly _completionsCache = new CompletionsCache()
   private readonly _twind: Twind
 
   constructor(
@@ -100,7 +71,6 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     logger: Logger,
   ) {
     this.typescript = typescript
-    this.info = info
     this.configurationManager = configurationManager
     this.logger = logger
     this._twind = new Twind(typescript, info, configurationManager, logger)
@@ -110,9 +80,22 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     context: TemplateContext,
     position: ts.LineAndCharacter,
   ): ts.WithMetadata<ts.CompletionInfo> {
-    const items = this.getCompletionItems(context, position)
+    const start = Date.now()
 
-    return translateCompletionItemsToCompletionInfo(context, items)
+    const rule = parse(context.text, context.toOffset(position), true)
+
+    const completions = this.getCompletionTokens(context, position)
+
+    if (this.configurationManager.config.debug) {
+      this.logger.log(`getCompletionsAtPosition: ${Date.now() - start}ms`)
+    }
+
+    return translateCompletionItemsToCompletionInfo(context, {
+      isIncomplete: true,
+      items: completions.map((completion, index) =>
+        this.getCompletionItem(context, completion, rule, index),
+      ),
+    })
   }
 
   public getCompletionEntryDetails(
@@ -120,10 +103,69 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     position: ts.LineAndCharacter,
     name: string,
   ): ts.CompletionEntryDetails {
-    const item = this.getCompletionItems(context, position).items.find((x) => x.label === name)
+    const start = Date.now()
 
-    if (item) {
-      return translateCompletionItemsToCompletionEntryDetails(this.typescript, item)
+    const rule = parse(context.text, context.toOffset(position), true)
+
+    const needle = rule.prefix && name === '&' ? rule.prefix : name
+
+    const { completions } = this._twind
+
+    const completion = completions.tokens.find((completion) => {
+      const label =
+        rule.prefix &&
+        completion.kind == 'utility' &&
+        completion.label.startsWith(rule.prefix + '-')
+          ? completion.label.slice(rule.prefix.length + 1)
+          : completion.label
+
+      return label === needle
+    })
+
+    if (completion) {
+      const item = this.getCompletionItem(context, completion, rule, 0)
+
+      item.label = name
+      item.detail = completion.detail
+      item.documentation = {
+        kind: vscode.MarkupKind.Markdown,
+        value: [
+          completion.css && '```css\n' + completion.css + '\n```',
+          completion.theme &&
+            '**Theme**\n\n```json\n' +
+              JSON.stringify(
+                {
+                  [completion.theme.section]: {
+                    [completion.theme.key]: completion.theme.value,
+                  },
+                },
+                null,
+                2,
+              ) +
+              '\n```',
+          this.configurationManager.config.debug &&
+            '**Parsed**\n\n```json\n' +
+              JSON.stringify(
+                {
+                  ...rule,
+                  textEdit: item.textEdit,
+                },
+                null,
+                2,
+              ) +
+              '\n```',
+          this.configurationManager.config.debug &&
+            '**Completion**\n\n```json\n' + JSON.stringify(completion, null, 2) + '\n```',
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
+      }
+
+      if (this.configurationManager.config.debug) {
+        this.logger.log(`getCompletionEntryDetails: ${Date.now() - start}ms`)
+      }
+
+      return translateCompletionItemToCompletionEntryDetails(this.typescript, item)
     }
 
     return {
@@ -209,10 +251,10 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
         // check if every rule.variants exist
         .concat(
           rule.variants
-            .filter((variant) => !this._twind.completions.variants.has(variant.raw))
+            .filter((variant) => !this._twind.completions.variants.has(variant.value))
             .map(
               (variant): ts.Diagnostic => ({
-                messageText: `Unknown variant "${variant.raw}"`,
+                messageText: `Unknown variant "${variant.value}"`,
                 start: variant.loc.start,
                 length: variant.loc.end - variant.loc.start,
                 file: context.node.getSourceFile(),
@@ -266,29 +308,10 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
 
   private getCompletionItem(
     context: TemplateContext,
-    position: ts.LineAndCharacter,
     completion: CompletionToken,
     rule: Rule,
     sortedIndex: number,
   ): vscode.CompletionItem {
-    const label =
-      rule.prefix && completion.kind == 'utility'
-        ? completion.label.slice(rule.prefix.length + 1)
-        : completion.label
-
-    const newText =
-      rule.prefix && completion.kind == 'utility'
-        ? completion.value.slice(rule.prefix.length + 1)
-        : completion.value
-
-    const textEdit = {
-      newText,
-      range: {
-        start: context.toPosition(rule.loc.start),
-        end: context.toPosition(rule.loc.end),
-      },
-    }
-
     return {
       kind: completion.color
         ? vscode.CompletionItemKind.Color
@@ -298,90 +321,49 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
         ? vscode.CompletionItemKind.Module
         : vscode.CompletionItemKind.Property,
       data: completion.kind,
-      label,
+      label:
+        rule.prefix && completion.label !== '&' && completion.kind == 'utility'
+          ? completion.label.slice(rule.prefix.length + 1)
+          : completion.label,
       preselect: false,
-      filterText: rule.value,
+      filterText: rule.name,
       sortText: sortedIndex.toString().padStart(8, '0'),
-      detail: completion.detail,
-      documentation: {
-        kind: vscode.MarkupKind.Markdown,
-        value: [
-          completion.css && '```css\n' + completion.css + '\n```',
-          completion.theme &&
-            '**Theme**\n\n```json\n' +
-              JSON.stringify(
-                {
-                  [completion.theme.section]: {
-                    [completion.theme.key]: completion.theme.value,
-                  },
-                },
-                null,
-                2,
-              ) +
-              '\n```',
-          this.configurationManager.config.debug &&
-            '**Parsed**\n\n```json\n' +
-              JSON.stringify(
-                {
-                  ...rule,
-                  sortedIndex,
-                  textEdit,
-                },
-                null,
-                2,
-              ) +
-              '\n```',
-          this.configurationManager.config.debug &&
-            '**Completion**\n\n```json\n' + JSON.stringify(completion, null, 2) + '\n```',
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
+      textEdit: {
+        newText:
+          rule.prefix && completion.label !== '&' && completion.kind == 'utility'
+            ? completion.value.slice(rule.prefix.length + 1)
+            : completion.value,
+        range: {
+          start: context.toPosition(rule.loc.start),
+          end: context.toPosition(rule.loc.end),
+        },
       },
-
-      textEdit,
     }
   }
 
-  private getCompletionItems(
+  private getCompletionTokens(
     context: TemplateContext,
     position: ts.LineAndCharacter,
-  ): vscode.CompletionList {
-    this.logger.log(
-      `getCompletionItems[${context.fileName}:${position.line}:${
-        position.character
-      }] ${JSON.stringify(context.text)}`,
-    )
-
-    const cached = this._completionsCache.getCached(context, position)
-
-    if (cached) {
-      return cached
-    }
-
-    const completions: vscode.CompletionList = {
-      isIncomplete: true,
-      items: [],
-    }
-
-    const { completions: twindCompletions } = this._twind
+  ): CompletionToken[] {
+    const start = Date.now()
 
     const rule = parse(context.text, context.toOffset(position), true)
 
-    const hasScreenVariant = rule.variants.some((variant) =>
-      twindCompletions.screens.has(variant.raw),
-    )
+    const { completions } = this._twind
+
+    const hasScreenVariant = rule.variants.some((variant) => completions.screens.has(variant.value))
 
     const screens = hasScreenVariant
       ? []
-      : twindCompletions.tokens.filter((completion) => completion.kind == 'screen')
+      : completions.tokens.filter((completion) => completion.kind == 'screen')
 
-    const variants = twindCompletions.tokens.filter(
+    const variants = completions.tokens.filter(
       (completion) =>
         completion.kind == 'variant' &&
-        !rule.variants.some((variant) => variant.raw === completion.value),
+        !rule.variants.some((variant) => variant.value === completion.value),
     )
 
-    const utilities = twindCompletions.tokens.filter(
+    const utilities = completions.tokens.filter(
       (completion) =>
         completion.kind == 'utility' &&
         (!rule.negated || completion.value.startsWith('-')) &&
@@ -389,58 +371,40 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     )
 
     // TODO Start a new directive group
+    const needle = prepareText(rule.raw)
     const matched = [
-      ...matchSorter(screens, prepareText(rule.raw), {
-        threshold: matchSorter.rankings.MATCHES,
-        keys: [
-          (completion) => prepareText(naturalExpand(completion.detail) + ' ' + completion.value),
-        ],
+      ...matchSorter(screens, needle, {
+        // threshold: matchSorter.rankings.MATCHES,
+        keys: [(completion) => prepareText(completion.value + ' ' + completion.detail)],
+        baseSort,
       }),
-      ...matchSorter(utilities, prepareText(rule.raw), {
-        threshold: matchSorter.rankings.ACRONYM,
-        keys: [(completion) => prepareText(naturalExpand(completion.value))],
-        sorter: (items) =>
-          items.sort((a, b) => {
-            if (a.rankedValue[0] == '-' && b.rankedValue[0] != '-') {
-              return 1
-            }
-
-            if (a.rankedValue[0] != '-' && b.rankedValue[0] == '-') {
-              return -1
-            }
-
-            return defaultBaseSortFn(a, b)
-          }),
-      }),
-      ...matchSorter(variants, prepareText(rule.raw), {
-        threshold: matchSorter.rankings.ACRONYM,
+      ...matchSorter(utilities, needle, {
+        // threshold: matchSorter.rankings.ACRONYM,
         keys: [(completion) => prepareText(completion.value)],
+        baseSort,
+      }),
+      ...matchSorter(variants, needle, {
+        // threshold: matchSorter.rankings.ACRONYM,
+        keys: [(completion) => prepareText(completion.value)],
+        baseSort,
       }),
     ]
 
-    completions.items = matched.map((completion, index) =>
-      this.getCompletionItem(context, position, completion, rule, index),
-    )
+    if (rule.prefix && (!rule.raw || rule.raw === '&')) {
+      const selfRef = completions.tokens.find(
+        (completion) => completion.kind == 'utility' && completion.value === rule.prefix,
+      )
 
-    // this._completions.tokens.forEach((completion) => {
-    //   if (completion.kind != 'utility' && !completion.value.startsWith(parsed.token)) {
-    //     return
-    //   }
-
-    //   if (completion.kind == 'utility' && !completion.value.startsWith(parsed.directive)) {
-    //     return
-    //   }
-
-    //   if (completion.kind == 'screen' && hasScreenVariant) {
-    //     return
-    //   }
-
-    //   if (completion.kind == 'variant' && parsed.variants.includes(completion.value)) {
-    //     return
-    //   }
-
-    //   completions.items.push(this.getCompletionItem(context, position, completion, parsed))
-    // })
+      if (selfRef) {
+        matched.unshift(
+          Object.assign(Object.defineProperties({}, Object.getOwnPropertyDescriptors(selfRef)), {
+            value: '&',
+            raw: '&',
+            label: '&',
+          }),
+        )
+      }
+    }
 
     // completions.items = [
     //   // Start a new directive group
@@ -474,94 +438,20 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
     //     })),
     // ]
 
-    if (rule.prefix && (!rule.raw || rule.raw === '&')) {
-      completions.items.unshift({
-        kind: vscode.CompletionItemKind.Constant,
-        label: `&`,
-        detail: `${rule.prefix}`,
-        sortText: `&${rule.prefix}`,
-        documentation: this.configurationManager.config.debug
-          ? {
-              kind: vscode.MarkupKind.Markdown,
-              value: [
-                '**Parsed**\n\n```json\n' +
-                  JSON.stringify(
-                    {
-                      ...rule,
-                      items: completions.items.map(({ label, filterText, sortText, textEdit }) => ({
-                        label,
-                        filterText,
-                        sortText,
-                        textEdit,
-                      })),
-                      matched: matched.map((x) => x.value),
-                      // utilities: utilities.map((x) => x.value),
-                    },
-                    null,
-                    2,
-                  ) +
-                  '\n```',
-              ]
-                .filter(Boolean)
-                .join('\n\n'),
-            }
-          : undefined,
-        textEdit: {
-          newText: '&',
-          range: {
-            start: context.toPosition(rule.loc.start),
-            end: context.toPosition(rule.loc.end),
-          },
-        },
-      })
+    if (this.configurationManager.config.debug) {
+      this.logger.log(
+        `getCompletionTokens: ${JSON.stringify({
+          position: context.toOffset(position),
+          needle: prepareText(rule.raw),
+          example: prepareText('translate-x-4.5'),
+          rule,
+          matched: matched.map((x) => x.label),
+        })}`,
+      )
+      this.logger.log(`getCompletionTokens: ${Date.now() - start}ms`)
     }
 
-    // if (this.configurationManager.config.debug) {
-    //   completions.items.unshift({
-    //     kind: vscode.CompletionItemKind.Constant,
-    //     label: `----`,
-    //     filterText: parsed.token,
-    //     preselect: true,
-    //     detail: parsed.directive,
-    //     sortText: `&${parsed.prefix}`,
-    //     documentation: {
-    //       kind: vscode.MarkupKind.Markdown,
-    //       value: [
-    //         this.configurationManager.config.debug &&
-    //           '**Parsed**\n\n```json\n' +
-    //             JSON.stringify(
-    //               {
-    //                 ...parsed,
-    //                 items: completions.items.map(({ label, filterText, sortText, textEdit }) => ({
-    //                   label,
-    //                   filterText,
-    //                   sortText,
-    //                   textEdit,
-    //                 })),
-    //                 matched: matched.map((x) => x.value),
-    //                 // utilities: utilities.map((x) => x.value),
-    //               },
-    //               null,
-    //               2,
-    //             ) +
-    //             '\n```',
-    //       ]
-    //         .filter(Boolean)
-    //         .join('\n\n'),
-    //     },
-    //     textEdit: {
-    //       newText: `&`.slice(parsed.token.length),
-    //       range: {
-    //         start: context.toPosition(parsed.tokenStartOffset + parsed.token.length),
-    //         end: position,
-    //       },
-    //     },
-    //   })
-    // }
-
-    this._completionsCache.updateCached(context, position, completions)
-
-    return completions
+    return matched
   }
 }
 
@@ -580,7 +470,7 @@ function translateCompletionItemsToCompletionInfo(
   }
 }
 
-function translateCompletionItemsToCompletionEntryDetails(
+function translateCompletionItemToCompletionEntryDetails(
   typescript: typeof ts,
   item: vscode.CompletionItem,
 ): ts.CompletionEntryDetails {
