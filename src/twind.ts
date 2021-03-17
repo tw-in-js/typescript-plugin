@@ -24,6 +24,7 @@ import { getConfig } from './load-twind-config'
 import { getColor } from './colors'
 
 import type { ConfigurationManager } from './configuration'
+import { watch } from './watch'
 
 const isCSSProperty = (key: string, value: CSSRuleValue): boolean =>
   !'@:&'.includes(key[0]) && ('rg'.includes((typeof value)[5]) || Array.isArray(value))
@@ -194,10 +195,8 @@ export interface Completions {
 export class Twind {
   private readonly typescript: typeof TS
   private readonly info: ts.server.PluginCreateInfo
-  private readonly configurationManager: ConfigurationManager
   private readonly logger: Logger
   private _completions: Completions | undefined
-  private _configFile: string | undefined
   private _state:
     | {
         program: TS.Program
@@ -217,8 +216,14 @@ export class Twind {
   ) {
     this.typescript = typescript
     this.info = info
-    this.configurationManager = configurationManager
     this.logger = logger
+
+    configurationManager.onUpdatedConfig(() => this._reset())
+    // TODO watch changes to package.json, package-lock.json, yarn.lock, pnpm-lock.yaml
+  }
+
+  private _reset(): void {
+    this._state = this._completions = undefined
   }
 
   private get state() {
@@ -234,7 +239,14 @@ export class Twind {
 
     const { configFile, ...config } = getConfig(program.getCurrentDirectory())
 
-    this._configFile = configFile
+    if (configFile) {
+      this.logger.log(`Loaded twind config from ${configFile}`)
+
+      // Resez all state on config file changes
+      watch(configFile, () => this._reset())
+    } else {
+      this.logger.log(`No twind config found`)
+    }
 
     const sheet = virtualSheet()
     const reports: ReportInfo[] = []
@@ -251,13 +263,14 @@ export class Twind {
           reports.push(info)
         },
       },
-      preflight: false,
-      prefix: false,
       plugins: {
         ...config.plugins,
         // Used to generate CSS for variants
         TYPESCRIPT_PLUGIN_PLACEHOLDER: { '--typescript_plugin_placeholder': 'none' },
       },
+      preflight: false,
+      hash: false,
+      prefix: false,
     })
 
     let context: Context
