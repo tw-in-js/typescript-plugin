@@ -3,15 +3,19 @@ import Module from 'module'
 
 import { buildSync } from 'esbuild'
 import findUp from 'find-up'
+import locatePath from 'locate-path'
 
 import type { Configuration } from 'twind'
 
-export const findConfig = (cwd = process.cwd()): string | undefined =>
-  findUp.sync(['twind.config.ts', 'twind.config.mjs', 'twind.config.js', 'twind.config.cjs'], {
-    cwd,
-  })
+const CONFIG_FILES = ['twind.config.ts', 'twind.config.mjs', 'twind.config.js', 'twind.config.cjs']
 
-export const loadConfig = (configFile: string): Configuration => {
+export const findConfig = (cwd = process.cwd()): string | undefined =>
+  locatePath.sync(CONFIG_FILES.map((file) => Path.resolve(cwd, 'config', file))) ||
+  locatePath.sync(CONFIG_FILES.map((file) => Path.resolve(cwd, 'src', file))) ||
+  locatePath.sync(CONFIG_FILES.map((file) => Path.resolve(cwd, 'public', file))) ||
+  findUp.sync(CONFIG_FILES, { cwd })
+
+export const loadConfig = (configFile: string, cwd = process.cwd()): Configuration => {
   const result = buildSync({
     bundle: true,
     entryPoints: [configFile],
@@ -23,6 +27,7 @@ export const loadConfig = (configFile: string): Configuration => {
     minify: false,
     splitting: false,
     write: false,
+    absWorkingDir: cwd,
   })
 
   const module = { exports: {} as { default?: Configuration } & Configuration }
@@ -83,7 +88,7 @@ export const getConfig = (
   configFile ??= findConfig(cwd)
 
   return {
-    ...(configFile ? loadConfig(Path.resolve(cwd, configFile)) : {}),
+    ...(configFile ? loadConfig(Path.resolve(cwd, configFile), cwd) : {}),
     configFile,
   }
 }

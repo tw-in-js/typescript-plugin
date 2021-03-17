@@ -48,7 +48,7 @@ npm install --save-dev typescript @twind/typescript-plugin
 
 This plugin requires TypeScript 4.1 or later. It can provide intellisense in both JavaScript and TypeScript files within any editor that uses TypeScript to power their language features. This includes [VS Code](https://code.visualstudio.com), [Sublime with the TypeScript plugin](https://github.com/Microsoft/TypeScript-Sublime-Plugin), [Atom with the TypeScript plugin](https://atom.io/packages/atom-typescript), [Visual Studio](https://www.visualstudio.com), and others.
 
-If you have a custom twind configuration you need to extract that into an own file. Create a `twind.config.{ts,js,cjs,mjs}` in your root folder. Here is using a custom plugin:
+If you have a custom twind configuration you need to extract that into an own file. Create a `twind.config.{ts,js,cjs,mjs}` in the root , `src` or `public` folder. Then import it for use with setup. Here is example using a custom plugin:
 
 ```js
 import { forms, formInput } from '@twind/forms'
@@ -58,6 +58,7 @@ export default {
   plugins: { forms, 'form-input': formInput}
 }
 
+// Augment the twind module to add addtional completions
 declare module 'twind' {
   interface Plugins {
     // forms should have been detected from setup – not need to add it
