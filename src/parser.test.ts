@@ -230,6 +230,87 @@ const test = suite('Parser')
       },
     ],
   ],
+  [
+    'top-[-123px] grid-cols-[minmax(100px,max-content)repeat(auto-fill,200px)20%] grid-rows-auto-1fr-auto bg-[#1da1f2]',
+    [
+      {
+        raw: 'top-[-123px]',
+        value: 'top-[-123px]',
+        name: 'top-[-123px]',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 0,
+          end: 12,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 12,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: 'grid-cols-[minmax(100px,max-content)repeat(auto-fill,200px)20%]',
+        value: 'grid-cols-[minmax(100px,max-content)repeat(auto-fill,200px)20%]',
+        name: 'grid-cols-[minmax(100px,max-content)repeat(auto-fill,200px)20%]',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 13,
+          end: 76,
+        },
+        spans: [
+          {
+            start: 13,
+            end: 76,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: 'grid-rows-auto-1fr-auto',
+        value: 'grid-rows-auto-1fr-auto',
+        name: 'grid-rows-auto-1fr-auto',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 77,
+          end: 100,
+        },
+        spans: [
+          {
+            start: 77,
+            end: 100,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: 'bg-[#1da1f2]',
+        value: 'bg-[#1da1f2]',
+        name: 'bg-[#1da1f2]',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 101,
+          end: 113,
+        },
+        spans: [
+          {
+            start: 101,
+            end: 113,
+          },
+        ],
+        variants: [],
+      },
+    ],
+  ],
 ] as const).forEach(([input, expected]) => {
   test(`parse: ${JSON.stringify(input)}`, () => {
     // console.log(JSON.stringify(parse(input)))

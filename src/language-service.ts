@@ -321,7 +321,7 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
         ? vscode.CompletionItemKind.Module
         : completion.interpolation
         ? vscode.CompletionItemKind.Variable
-        : vscode.CompletionItemKind.Constant,
+        : vscode.CompletionItemKind.Property,
       data: completion.kind,
       label:
         rule.prefix && completion.label !== '&' && completion.kind == 'utility'
