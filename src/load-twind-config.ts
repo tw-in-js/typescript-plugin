@@ -7,13 +7,29 @@ import locatePath from 'locate-path'
 
 import type { Configuration } from 'twind'
 
-const CONFIG_FILES = ['twind.config.ts', 'twind.config.mjs', 'twind.config.js', 'twind.config.cjs']
+const TWIND_CONFIG_FILES = [
+  'twind.config.ts',
+  'twind.config.mjs',
+  'twind.config.js',
+  'twind.config.cjs',
+]
 
+const TAILWIND_CONFIG_FILES = [
+  'tailwind.config.ts',
+  'tailwind.config.mjs',
+  'tailwind.config.js',
+  'tailwind.config.cjs',
+]
+
+// TODO use typescript to check files
+// this.typescript.server.toNormalizedPath(fileName)
+// info.project.containsFile()
 export const findConfig = (cwd = process.cwd()): string | undefined =>
-  locatePath.sync(CONFIG_FILES.map((file) => Path.resolve(cwd, 'config', file))) ||
-  locatePath.sync(CONFIG_FILES.map((file) => Path.resolve(cwd, 'src', file))) ||
-  locatePath.sync(CONFIG_FILES.map((file) => Path.resolve(cwd, 'public', file))) ||
-  findUp.sync(CONFIG_FILES, { cwd })
+  locatePath.sync(TWIND_CONFIG_FILES.map((file) => Path.resolve(cwd, 'config', file))) ||
+  locatePath.sync(TWIND_CONFIG_FILES.map((file) => Path.resolve(cwd, 'src', file))) ||
+  locatePath.sync(TWIND_CONFIG_FILES.map((file) => Path.resolve(cwd, 'public', file))) ||
+  findUp.sync(TWIND_CONFIG_FILES, { cwd }) ||
+  findUp.sync(TAILWIND_CONFIG_FILES, { cwd })
 
 export const loadConfig = (configFile: string, cwd = process.cwd()): Configuration => {
   const result = buildSync({

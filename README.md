@@ -75,6 +75,8 @@ declare module 'twind' {
 }
 ```
 
+> If no `twind.config.{ts,js,cjs,mjs}` and a `tailwind.config.{ts,js,cjs,mjs}` exists, the compatible values from the tailwind config will be used.
+
 ### With VS Code
 
 Currently you must manually install the plugin along side TypeScript in your workspace.
