@@ -39,6 +39,9 @@ export const loadConfig = (configFile: string, cwd = process.cwd()): Configurati
     platform: 'node',
     target: `node${process.versions.node}`,
     external: Module.builtinModules,
+    // Follow WMR rules
+    mainFields: ['esmodules', 'modern', 'module', 'jsnext:main', 'main'],
+    conditions: ['development', 'esmodules', 'module', 'node', 'import', 'require', 'default'],
     sourcemap: 'inline',
     minify: false,
     splitting: false,

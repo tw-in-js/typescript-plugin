@@ -87,7 +87,7 @@
   },
   "sideEffects": false,
   "peerDependencies": {
-    "twind": ">=0.15.9 <2"
+    "twind": ">=0.16.0 <2"
   },
   "peerDependenciesMeta": {
     "twind": {
@@ -96,7 +96,7 @@
   },
   "dependencies": {
     "cssbeautify": "^0.3.1",
-    "esbuild": "^0.9.1",
+    "esbuild": "^0.9.3",
     "import-from": "^3.0.0",
     "locate-path": "^6.0.0",
     "match-sorter": "^6.3.0",
