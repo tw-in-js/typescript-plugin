@@ -37,7 +37,7 @@ export const loadConfig = (configFile: string, cwd = process.cwd()): Configurati
     entryPoints: [configFile],
     format: 'cjs',
     platform: 'node',
-    target: `node${process.versions.node}`,
+    target: '2018', // `node${process.versions.node}`,
     external: Module.builtinModules,
     // Follow WMR rules
     mainFields: ['esmodules', 'modern', 'module', 'jsnext:main', 'main'],
