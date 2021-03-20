@@ -2,7 +2,7 @@
 
 <div align="center">
 
-> TypeScript language service plugin that adds IntelliSense for tailwindjs
+> TypeScript language service plugin that adds IntelliSense for Twind
 
 [![MIT License](https://flat.badgen.net/github/license/tw-in-js/typescript-plugin)](https://github.com/tw-in-js/typescript-plugin/blob/main/LICENSE)
 [![Latest Release](https://flat.badgen.net/npm/v/@twind/typescript-plugin?icon=npm&label)](https://www.npmjs.com/package/@twind/typescript-plugin)
@@ -101,6 +101,7 @@ By default VS Code will not trigger completions when editing "string" content, f
 
 ```json
 {
+  "editor.suggest.showStatusBar": true,
   "editor.quickSuggestions": {
     "strings": true
   }

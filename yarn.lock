@@ -344,13 +344,13 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-distilt@^0.10.1:
-  version "0.10.1"
-  resolved "https://registry.npmjs.org/distilt/-/distilt-0.10.1.tgz#7603f8f3b64c24e7ed66a696ee0ec85dbb2d4dc4"
-  integrity sha512-JZSjKlpXMDBunrwlpDZW3+L+UlnjaSP1egOfEPix7anPXG24Mq3d9SRghpQkoZs8jeCq76Gnp3/VL2uM1NXtSA==
+distilt@^0.10.3:
+  version "0.10.3"
+  resolved "https://registry.npmjs.org/distilt/-/distilt-0.10.3.tgz#24bba0228a7df163522bc00444775a61ef8a4d8f"
+  integrity sha512-ieyPdDJSUQ0fOAiXwnPIfv4jRjhP3v6zzC544RjD2gMhnV/MVMY62fQkHkDh7b4zmU88vahvINaIXLA9wDv31A==
   dependencies:
     es-module-lexer "^0.3.26"
-    esbuild "^0.8.28"
+    esbuild "^0.9.3"
     execa "^5.0.0"
     find-up "^5.0.0"
     globby "^11.0.1"
@@ -425,11 +425,6 @@ esbuild-register@^2.3.0:
   dependencies:
     esbuild "^0.9.2"
     jsonc-parser "^3.0.0"
-
-esbuild@^0.8.28:
-  version "0.8.57"
-  resolved "https://registry.npmjs.org/esbuild/-/esbuild-0.8.57.tgz#a42d02bc2b57c70bcd0ef897fe244766bb6dd926"
-  integrity sha512-j02SFrUwFTRUqiY0Kjplwjm1psuzO1d6AjaXKuOR9hrY0HuPsT6sV42B6myW34h1q4CRy+Y3g4RU/cGJeI/nNA==
 
 esbuild@^0.9.2:
   version "0.9.2"
@@ -1265,10 +1260,10 @@ tsutils@^3.17.1:
   dependencies:
     tslib "^1.8.1"
 
-twind@^0.16.0:
-  version "0.16.0"
-  resolved "https://registry.npmjs.org/twind/-/twind-0.16.0.tgz#8045ae7178149aaa94669669ea98c1f129a0ef82"
-  integrity sha512-dAslmdmPi8N9dmEB2ZgZewqTHnkC2K39WaPQSWAqon+oKhn7sh4wd5R0zkxvPpbB8QGLdGxeEOZJjQt5RgS57Q==
+twind@^0.16.6:
+  version "0.16.6"
+  resolved "https://registry.npmjs.org/twind/-/twind-0.16.6.tgz#2da593cc390311cb6284252cd169518f6c524a70"
+  integrity sha512-YQ6d3KPfqwyytY/TGXuKquNagbAfyOKITP40i/4PHRwNvcQU+z56ralLp0aRW0ydVUVQZC+vR/2UFU9i0xc+/w==
   dependencies:
     csstype "^3.0.5"
     htmlparser2 "^6.0.0"

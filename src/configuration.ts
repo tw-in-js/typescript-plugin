@@ -1,5 +1,6 @@
 export interface TwindPluginConfiguration {
   readonly tags: ReadonlyArray<string>
+  readonly configFile?: string;
   readonly debug: boolean
   // Readonly validate: boolean;
   // readonly lint: { [key: string]: any };

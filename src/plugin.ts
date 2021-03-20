@@ -27,9 +27,10 @@ export class TwindPlugin {
       return info.languageService
     }
 
-    // // Set up decorator
+    // Set up decorator
     // const { languageService } = info
 
+    // this.typescript.parseIsolatedEntityName(text, languageVersion)
     // info.languageService = {
     //   ...info.languageService,
 
@@ -47,8 +48,12 @@ export class TwindPlugin {
     //     // emmetCompletions: false
     //     const prior = languageService.getCompletionsAtPosition(fileName, position, options)
 
+    //     // options?.triggerCharacter
     //     // TODO match file [t]sx?
-    //     const contents = info.project.readFile(fileName)
+    //     const sourceFile = info.languageService.getProgram()?.getSourceFile(fileName)
+    //     sourceFile?.getLineAndCharacterOfPosition(position)
+    //     sourceFile?.getText()
+    //     // IDEA: find last "'` before position
 
     //     // logger.log('getCompletionsAtPosition: ' + JSON.stringify({ fileName, position }))
 
