@@ -4,6 +4,7 @@ import type { Logger } from 'typescript-template-language-service-decorator'
 import type * as TS from 'typescript/lib/tsserverlibrary'
 
 import resolveFrom from 'resolve-from'
+import importFrom from 'import-from'
 import cssbeautify from 'cssbeautify'
 
 import type {
@@ -257,7 +258,12 @@ export class Twind {
       reports.length = 0
     })
 
-    const { tw } = create({
+    // Load twind from project
+    // TODO Use esbuild and watch twindPackageFile
+    const { tw } = (
+      (importFrom.silent(program.getCurrentDirectory(), 'twind') as typeof import('twind'))
+        ?.create || create
+    )({
       ...config,
       sheet,
       mode: {
@@ -323,10 +329,18 @@ export class Twind {
 
     let tokens: string[] = []
 
-    // TODO use resolveFrom.silent and warn
-    const twindPackageFile = resolveFrom(program.getCurrentDirectory(), 'twind/package.json')
-    const twindDTSFileName = path.resolve(path.dirname(twindPackageFile), 'twind.d.ts')
-    const twindDTSSourceFile = program.getSourceFile(twindDTSFileName)
+    // Prefer project twind and fallback to bundled twind
+    const twindPackageFile = resolveFrom.silent(program.getCurrentDirectory(), 'twind/package.json')
+    this.logger.log('twindPackageFile: ' + twindPackageFile)
+
+    const twindDTSSourceFile =
+      (twindPackageFile &&
+        program.getSourceFile(path.resolve(path.dirname(twindPackageFile), 'twind.d.ts'))) ||
+      program
+        .getSourceFiles()
+        .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
+
+    this.logger.log('twindPackageFile: ' + twindDTSSourceFile?.fileName)
 
     if (twindDTSSourceFile) {
       const { typescript: ts } = this
