@@ -45,8 +45,18 @@ const collator = new Intl.Collator(undefined, {
   caseFirst: 'false',
 })
 
-const baseSort: NonNullable<MatchSorterOptions<CompletionToken>['baseSort']> = (a, b) =>
-  collator.compare(a.item.label, b.item.label)
+const baseSort: NonNullable<MatchSorterOptions<CompletionToken>['baseSort']> = (a, b) => {
+  // Sort negated labels last
+  if (a.item.label[0] == '-' && b.item.label[0] != '-') {
+    return 1
+  }
+
+  if (a.item.label[0] != '-' && b.item.label[0] == '-') {
+    return -1
+  }
+
+  return collator.compare(a.item.label, b.item.label)
+}
 
 // By default, match-sorter assumes spaces to be the word separator.
 // Lets split the text into whitespace separated words
