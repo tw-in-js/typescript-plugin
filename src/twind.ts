@@ -340,7 +340,7 @@ export class Twind {
         .getSourceFiles()
         .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
 
-    this.logger.log('twindPackageFile: ' + twindDTSSourceFile?.fileName)
+    this.logger.log('twindDTSSourceFile: ' + twindDTSSourceFile?.fileName)
 
     if (twindDTSSourceFile) {
       const { typescript: ts } = this
