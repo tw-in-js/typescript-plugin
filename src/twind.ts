@@ -37,7 +37,10 @@ const sameValueToUndefined = (ref: string, value: string | undefined): string | 
   ref === value ? undefined : value
 
 const convertRem = (value: string | undefined): string | undefined => {
-  const replaced = value?.replace(/(-?(?:\d+\.)\d+)rem/g, (_, number) => `${Number(number) * 16}px`)
+  const replaced = value?.replace(
+    /(-?(?:\d+\.)?\d+)rem/g,
+    (_, number) => `${Number(number) * 16}px`,
+  )
 
   return value === replaced ? value : `${value} (${replaced})`
 }
