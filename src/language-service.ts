@@ -194,7 +194,10 @@ export class TwindLanguageService implements TemplateLanguageService {
   ): ts.QuickInfo | undefined {
     const rules = parse(context.text, context.toOffset(position))
 
-    const rule = rules.map((rule) => rule.value).join(' ')
+    const rule = rules
+      .filter((rule) => !/\${x*}/.test(rule.value))
+      .map((rule) => rule.value)
+      .join(' ')
 
     if (!rule) {
       return undefined
@@ -264,8 +267,8 @@ export class TwindLanguageService implements TemplateLanguageService {
             ? undefined
             : {
                 messageText: `Missing utility class`,
-                start: rule.loc.start,
-                length: rule.loc.end - rule.loc.start,
+                start: rule.spans[0].start,
+                length: rule.spans[rule.spans.length - 1].end - rule.spans[0].start,
                 file: context.node.getSourceFile(),
                 category: this.typescript.DiagnosticCategory.Error,
                 code: ErrorCodes.UNKNOWN_DIRECTIVE,
@@ -278,7 +281,8 @@ export class TwindLanguageService implements TemplateLanguageService {
               (variant) =>
                 !(
                   this._twind.completions.variants.has(variant.value) ||
-                  (variant.value[0] == '[' && variant.value[variant.value.length - 2] == ']')
+                  (variant.value[0] == '[' && variant.value[variant.value.length - 2] == ']') ||
+                  /\${x*}/.test(variant.value)
                 ),
             )
             .map(

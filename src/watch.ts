@@ -3,7 +3,8 @@ import * as fs from 'fs'
 export function watch(
   file: string,
   listener: (event: 'rename' | 'change', filename: string) => void,
-): void {
+  { once }: { once?: boolean } = {},
+): () => void {
   try {
     const watcher = fs.watch(
       file,
@@ -11,13 +12,20 @@ export function watch(
         persistent: false,
       },
       (event, filename) => {
-        watcher.close()
+        if (once) watcher.close()
+
         listener(event, filename)
       },
     )
+
+    return () => watcher.close()
   } catch (error) {
-    if (error.code !== 'ERR_FEATURE_UNAVAILABLE_ON_PLATFORM') {
-      throw error
+    if (['ERR_FEATURE_UNAVAILABLE_ON_PLATFORM', 'ENOENT'].includes(error.code)) {
+      return () => {
+        /* no-op*/
+      }
     }
+
+    throw error
   }
 }

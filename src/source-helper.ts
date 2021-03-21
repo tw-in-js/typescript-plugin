@@ -9,7 +9,7 @@ import type {
 import type ScriptSourceHelper from 'typescript-template-language-service-decorator/lib/script-source-helper'
 import type TemplateSourceHelper from 'typescript-template-language-service-decorator/lib/template-source-helper'
 import { relative } from 'typescript-template-language-service-decorator/lib/nodes'
-import { match, Matcher, Predicates } from './match'
+import { match, Matcher } from './match'
 
 class PlaceholderSubstituter {
   public static replacePlaceholders(

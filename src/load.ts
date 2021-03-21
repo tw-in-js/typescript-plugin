@@ -1,9 +1,9 @@
+import type * as ts from 'typescript/lib/tsserverlibrary'
+
 import * as Path from 'path'
 import Module from 'module'
 
 import { buildSync } from 'esbuild'
-import findUp from 'find-up'
-import locatePath from 'locate-path'
 
 import type { Configuration } from 'twind'
 
@@ -24,12 +24,18 @@ const TAILWIND_CONFIG_FILES = [
 // TODO use typescript to check files
 // this.typescript.server.toNormalizedPath(fileName)
 // info.project.containsFile()
-export const findConfig = (cwd = process.cwd()): string | undefined =>
-  locatePath.sync(TWIND_CONFIG_FILES.map((file) => Path.resolve(cwd, 'config', file))) ||
-  locatePath.sync(TWIND_CONFIG_FILES.map((file) => Path.resolve(cwd, 'src', file))) ||
-  locatePath.sync(TWIND_CONFIG_FILES.map((file) => Path.resolve(cwd, 'public', file))) ||
-  findUp.sync(TWIND_CONFIG_FILES, { cwd }) ||
-  findUp.sync(TAILWIND_CONFIG_FILES, { cwd })
+export const findConfig = (project: ts.server.Project, cwd = process.cwd()): string | undefined => {
+  const locatePath = (files: string[]) =>
+    files.map((file) => Path.resolve(cwd, file)).find((file) => project.fileExists(file))
+
+  return (
+    locatePath(TWIND_CONFIG_FILES.map((file) => Path.join('config', file))) ||
+    locatePath(TWIND_CONFIG_FILES.map((file) => Path.join('src', file))) ||
+    locatePath(TWIND_CONFIG_FILES.map((file) => Path.join('public', file))) ||
+    locatePath(TWIND_CONFIG_FILES) ||
+    locatePath(TAILWIND_CONFIG_FILES)
+  )
+}
 
 export const loadFile = <T>(file: string, cwd = process.cwd()): T => {
   const result = buildSync({
@@ -107,10 +113,11 @@ export const loadConfig = (configFile: string, cwd = process.cwd()): Configurati
 }
 
 export const getConfig = (
+  project: ts.server.Project,
   cwd = process.cwd(),
   configFile?: string,
 ): Configuration & { configFile: string | undefined } => {
-  configFile ??= findConfig(cwd)
+  configFile ??= findConfig(project, cwd)
 
   return {
     ...(configFile ? loadConfig(Path.resolve(cwd, configFile), cwd) : {}),

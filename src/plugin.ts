@@ -10,7 +10,6 @@ import { ConfigurationManager, TwindPluginConfiguration } from './configuration'
 import { TwindLanguageService } from './language-service'
 import { StandardTemplateSourceHelper } from './source-helper'
 import { LanguageServiceLogger } from './logger'
-import { getSubstitutions } from './substituter'
 import { getSourceMatchers } from './source-matcher'
 
 // https://github.com/microsoft/typescript-template-language-service-decorator/blob/main/src/standard-template-source-helper.ts#L75
@@ -68,7 +67,7 @@ export class TwindPlugin {
 
     const ttls = new TwindLanguageService(this.typescript, info, this._configManager, this._logger)
 
-    const templateSettings = getTemplateSettings(this._configManager, this._logger)
+    const templateSettings = getTemplateSettings(this._configManager)
 
     const helper = new StandardTemplateSourceHelper(
       this.typescript,
@@ -163,18 +162,14 @@ export class TwindPlugin {
   }
 }
 
-export function getTemplateSettings(
-  configManager: ConfigurationManager,
-  logger: LanguageServiceLogger,
-): TemplateSettings {
+export function getTemplateSettings(configManager: ConfigurationManager): TemplateSettings {
   return {
     get tags() {
       return configManager.config.tags
     },
     enableForStringWithSubstitutions: true,
-    getSubstitutions(templateString, spans): string {
-      logger.log(`getSubstitutions: ${JSON.stringify(templateString)} (${JSON.stringify(spans)})`)
-      return getSubstitutions(/* templateString, spans */)
+    getSubstitution(templateString, start, end) {
+      return `\${${'x'.repeat(end - start - 3)}}`
     },
   }
 }

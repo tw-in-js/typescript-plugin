@@ -3,8 +3,6 @@ import * as path from 'path'
 import type { Logger } from 'typescript-template-language-service-decorator'
 import type * as TS from 'typescript/lib/tsserverlibrary'
 
-import resolveFrom from 'resolve-from'
-import importFrom from 'import-from'
 import cssbeautify from 'cssbeautify'
 
 import type {
@@ -17,11 +15,10 @@ import type {
   TW,
   Configuration,
   ReportInfo,
-  Token,
 } from 'twind'
 import { theme, create, silent } from 'twind'
 import { VirtualSheet, virtualSheet } from 'twind/sheets'
-import { getConfig } from './load'
+import { getConfig, loadFile } from './load'
 import { getColor } from './colors'
 
 import type { ConfigurationManager } from './configuration'
@@ -198,9 +195,7 @@ export interface Completions {
 }
 
 export class Twind {
-  private readonly typescript: typeof TS
-  private readonly info: ts.server.PluginCreateInfo
-  private readonly logger: Logger
+  private _watchers: (() => void)[] = []
   private _completions: Completions | undefined
   private _state:
     | {
@@ -210,25 +205,28 @@ export class Twind {
         tw: TW
         context: Context
         config: Configuration
+        twindDTSSourceFile: TS.SourceFile | undefined
       }
     | undefined
 
   constructor(
-    typescript: typeof TS,
-    info: ts.server.PluginCreateInfo,
-    configurationManager: ConfigurationManager,
-    logger: Logger,
+    private readonly typescript: typeof TS,
+    private readonly info: ts.server.PluginCreateInfo,
+    private readonly configurationManager: ConfigurationManager,
+    private readonly logger: Logger,
   ) {
-    this.typescript = typescript
-    this.info = info
-    this.logger = logger
-
     configurationManager.onUpdatedConfig(() => this._reset())
     // TODO watch changes to package.json, package-lock.json, yarn.lock, pnpm-lock.yaml
+    ;['package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'].forEach((file) => {
+      watch(path.resolve(info.project.getCurrentDirectory(), file), () => this._reset())
+    })
   }
 
   private _reset(): void {
+    this.logger.log('reset state')
     this._state = this._completions = undefined
+    this._watchers.forEach((unwatch) => unwatch())
+    this._watchers.length = 0
   }
 
   private get state() {
@@ -242,13 +240,17 @@ export class Twind {
       return undefined
     }
 
-    const { configFile, ...config } = getConfig(program.getCurrentDirectory())
+    const { configFile, ...config } = getConfig(
+      this.info.project,
+      program.getCurrentDirectory(),
+      this.configurationManager.config.configFile,
+    )
 
     if (configFile) {
       this.logger.log(`Loaded twind config from ${configFile}`)
 
-      // Resez all state on config file changes
-      watch(configFile, () => this._reset())
+      // Reset all state on config file changes
+      this._watchers.push(watch(configFile, () => this._reset(), { once: true }))
     } else {
       this.logger.log(`No twind config found`)
     }
@@ -259,18 +261,50 @@ export class Twind {
       reports.length = 0
     })
 
-    // Load twind from project
-    // TODO Use esbuild and watch twindPackageFile
+    // Prefer project twind and fallback to bundled twind
+    const twindDTSFile = this.info.project
+      .resolveModuleNames(['twind'], program.getRootFileNames()[0])
+      .map((moduleName) => moduleName?.resolvedFileName)[0]
+
+    const twindDTSSourceFile =
+      (twindDTSFile &&
+        program.getSourceFiles().find((sourceFile) => sourceFile.fileName == twindDTSFile)) ||
+      program
+        .getSourceFiles()
+        .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
+
+    this.logger.log('twindDTSSourceFile: ' + twindDTSSourceFile?.fileName)
+
+    if (twindDTSSourceFile) {
+      this._watchers.push(watch(twindDTSSourceFile.fileName, () => this._reset(), { once: true }))
+    }
+
+    const twindFile = twindDTSSourceFile?.fileName.replace(/\.d\.ts/, '.js')
+    if (twindFile) {
+      this._watchers.push(watch(twindFile, () => this._reset(), { once: true }))
+    }
+
+    this.logger.log('twindFile: ' + twindFile)
+
     const { tw } = (
-      (importFrom.silent(program.getCurrentDirectory(), 'twind') as typeof import('twind'))
-        ?.create || create
+      (twindFile &&
+        (loadFile(twindFile, program.getCurrentDirectory()) as typeof import('twind'))?.create) ||
+      create
     )({
       ...config,
       sheet,
       mode: {
         ...silent,
         report: (info) => {
-          reports.push(info)
+          // Ignore error from substitions
+          if (
+            !(
+              (info.id === 'UNKNOWN_DIRECTIVE' && /\${x*}/.test(info.rule)) ||
+              (info.id === 'UNKNOWN_THEME_VALUE' && /\${x*}/.test(String(info.key)))
+            )
+          ) {
+            reports.push(info)
+          }
         },
       },
       plugins: {
@@ -289,8 +323,16 @@ export class Twind {
       return ''
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this._state = { program, sheet, tw, reports, context: context!, config }
+    this._state = {
+      program,
+      sheet,
+      tw,
+      reports,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      context: context!,
+      config,
+      twindDTSSourceFile,
+    }
 
     return this._state
   }
@@ -314,6 +356,8 @@ export class Twind {
     const { completions } = this
 
     for (const parsed of parse(rule)) {
+      if (/\${x*}/.test(parsed.name)) continue
+
       const [, arbitrayValue] = parsed.name.match(/-(\[[^\]]+])/) || []
 
       const utilitiyExists =
@@ -385,20 +429,7 @@ export class Twind {
 
     let tokens: string[] = []
 
-    // Prefer project twind and fallback to bundled twind
-    const twindPackageFile = resolveFrom.silent(program.getCurrentDirectory(), 'twind/package.json')
-    this.logger.log('twindPackageFile: ' + twindPackageFile)
-
-    const twindDTSSourceFile =
-      (twindPackageFile &&
-        program.getSourceFile(path.resolve(path.dirname(twindPackageFile), 'twind.d.ts'))) ||
-      program
-        .getSourceFiles()
-        .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
-
-    this.logger.log('twindDTSSourceFile: ' + twindDTSSourceFile?.fileName)
-
-    if (twindDTSSourceFile) {
+    if (state.twindDTSSourceFile) {
       const { typescript: ts } = this
       const visit = (node: TS.Node) => {
         if (tokens.length) return
@@ -422,7 +453,7 @@ export class Twind {
       }
 
       // Walk the tree to search for classes
-      this.typescript.forEachChild(twindDTSSourceFile, visit)
+      this.typescript.forEachChild(state.twindDTSSourceFile, visit)
     }
 
     // Add plugins and variants from loaded config
@@ -553,11 +584,6 @@ export class Twind {
           )
         }
       } else {
-        const x = createCompletionToken(prefix, {
-          raw: directive,
-          label: directive,
-          interpolation: value as CompletionToken['interpolation'],
-        })
         completionTokens.set(
           prefix,
           createCompletionToken(prefix, {
@@ -566,8 +592,6 @@ export class Twind {
             interpolation: value as CompletionToken['interpolation'],
           }),
         )
-
-        this.logger.log(`interpolation: "${x.value}" (${x.interpolation})`)
       }
     })
 
