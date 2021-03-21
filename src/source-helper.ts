@@ -9,7 +9,9 @@ import type {
 import type ScriptSourceHelper from 'typescript-template-language-service-decorator/lib/script-source-helper'
 import type TemplateSourceHelper from 'typescript-template-language-service-decorator/lib/template-source-helper'
 import { relative } from 'typescript-template-language-service-decorator/lib/nodes'
+import type { ConfigurationManager } from './configuration'
 import { match, Matcher } from './match'
+import { getSourceMatchers } from './source-matcher'
 
 class PlaceholderSubstituter {
   public static replacePlaceholders(
@@ -126,13 +128,35 @@ class StandardTemplateContext /* implements TemplateContext */ {
   }
 }
 
+export function getTemplateSettings(configManager: ConfigurationManager): TemplateSettings {
+  return {
+    get tags() {
+      return configManager.config.tags
+    },
+    enableForStringWithSubstitutions: true,
+    getSubstitution(templateString, start, end) {
+      return `\${${'x'.repeat(end - start - 3)}}`
+    },
+  }
+}
+
 export class StandardTemplateSourceHelper implements TemplateSourceHelper {
+  private templateSettings: TemplateSettings
+  private sourceMatchers: Matcher[]
+
   constructor(
     private readonly typescript: typeof ts,
-    private readonly templateStringSettings: TemplateSettings,
+    private readonly configManager: ConfigurationManager,
     private readonly helper: ScriptSourceHelper,
-    private readonly sourceMatchers: Matcher[],
-  ) {}
+  ) {
+    this.templateSettings = getTemplateSettings(this.configManager)
+    this.sourceMatchers = getSourceMatchers(this.typescript, this.configManager.config)
+
+    configManager.onUpdatedConfig(() => {
+      this.templateSettings = getTemplateSettings(this.configManager)
+      this.sourceMatchers = getSourceMatchers(this.typescript, this.configManager.config)
+    })
+  }
 
   public getTemplate(fileName: string, position: number): TemplateContext | undefined {
     const node = this.getValidTemplateNode(this.helper.getNode(fileName, position))
@@ -163,7 +187,7 @@ export class StandardTemplateSourceHelper implements TemplateSourceHelper {
       fileName,
       node,
       this.helper,
-      this.templateStringSettings,
+      this.templateSettings,
     ) as TemplateContext
   }
 
@@ -177,7 +201,7 @@ export class StandardTemplateSourceHelper implements TemplateSourceHelper {
             fileName,
             this.getValidTemplateNode(node) as ts.StringLiteralLike,
             this.helper,
-            this.templateStringSettings,
+            this.templateSettings,
           ) as TemplateContext,
       )
   }
@@ -199,7 +223,7 @@ export class StandardTemplateSourceHelper implements TemplateSourceHelper {
       return this.getValidTemplateNode(node.template)
     }
 
-    // TODO if templateStringSettings.enableForStringWithSubstitutions
+    // TODO if templateSettings.enableForStringWithSubstitutions
     if (this.typescript.isTemplateHead(node) || this.typescript.isTemplateSpan(node)) {
       return this.getValidTemplateNode(node.parent)
     }

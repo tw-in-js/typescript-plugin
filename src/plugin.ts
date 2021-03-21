@@ -67,19 +67,17 @@ export class TwindPlugin {
 
     const ttls = new TwindLanguageService(this.typescript, info, this._configManager, this._logger)
 
-    const templateSettings = getTemplateSettings(this._configManager)
-
     const helper = new StandardTemplateSourceHelper(
       this.typescript,
-      templateSettings,
+      this._configManager,
       new StandardScriptSourceHelper(this.typescript, info.project),
-      getSourceMatchers(this.typescript, templateSettings),
     )
 
     // Set up decorator
     return {
       ...languageService,
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getCompletionEntryDetails: (fileName, position, name, ...rest: any[]) => {
         const context = helper.getTemplate(fileName, position)
 
@@ -91,6 +89,7 @@ export class TwindPlugin {
           )
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (languageService.getCompletionsAtPosition as any)(fileName, position, name, ...rest)
       },
 
@@ -159,18 +158,6 @@ export class TwindPlugin {
     }
 
     this._configManager.updateFromPluginConfig(config)
-  }
-}
-
-export function getTemplateSettings(configManager: ConfigurationManager): TemplateSettings {
-  return {
-    get tags() {
-      return configManager.config.tags
-    },
-    enableForStringWithSubstitutions: true,
-    getSubstitution(templateString, start, end) {
-      return `\${${'x'.repeat(end - start - 3)}}`
-    },
   }
 }
 

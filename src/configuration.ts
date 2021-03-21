@@ -1,6 +1,8 @@
 export interface TwindPluginConfiguration {
-  readonly tags: ReadonlyArray<string>
   readonly configFile?: string
+  readonly tags: ReadonlyArray<string>
+  readonly attributes: ReadonlyArray<string>
+  readonly styles: ReadonlyArray<string>
   readonly debug?: boolean
   // Readonly validate: boolean;
   // readonly lint: { [key: string]: any };
@@ -10,6 +12,8 @@ export interface TwindPluginConfiguration {
 export class ConfigurationManager {
   private static readonly defaultConfiguration: TwindPluginConfiguration = {
     tags: ['tw', 'apply'],
+    attributes: ['tw', 'class', 'className'],
+    styles: ['style', 'styled'],
     debug: false,
     // Validate: true,
     // lint: {
@@ -30,7 +34,7 @@ export class ConfigurationManager {
   }
 
   public updateFromPluginConfig(config: Partial<TwindPluginConfiguration> = {}): void {
-    const { tags, ...mergedConfig } = {
+    const mergedConfig = {
       ...ConfigurationManager.defaultConfiguration,
       ...config,
     }
@@ -38,10 +42,7 @@ export class ConfigurationManager {
     this._configuration = {
       ...mergedConfig,
       debug: 'true' == String(mergedConfig.debug),
-      tags: this._configuration.tags,
     }
-    ;(this._configuration.tags as string[]).length = 0
-    ;(this._configuration.tags as string[]).push(...tags)
 
     for (const listener of this._configUpdatedListeners) {
       listener()

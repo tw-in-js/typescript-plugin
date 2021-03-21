@@ -1,10 +1,10 @@
-import type { TemplateSettings } from 'typescript-template-language-service-decorator'
 import type * as ts from 'typescript/lib/tsserverlibrary'
 import type { Matcher } from './match'
+import type { TwindPluginConfiguration } from './configuration'
 
 export const getSourceMatchers = (
   { SyntaxKind }: typeof ts,
-  templateStringSettings: TemplateSettings,
+  config: TwindPluginConfiguration,
 ): Matcher[] => [
   // tw`...`
   {
@@ -13,7 +13,7 @@ export const getSourceMatchers = (
     // TODO styled.button, styled()
     tag: {
       kind: SyntaxKind.Identifier,
-      text: templateStringSettings.tags,
+      text: config.tags,
     },
   },
   // tw(...)
@@ -23,7 +23,7 @@ export const getSourceMatchers = (
     // TODO styled.button, styled()
     expression: {
       kind: SyntaxKind.Identifier,
-      text: templateStringSettings.tags,
+      text: config.tags,
     },
   },
   // JsxAttribute -> className=""
@@ -31,7 +31,7 @@ export const getSourceMatchers = (
     kind: SyntaxKind.JsxAttribute,
     name: {
       kind: SyntaxKind.Identifier,
-      text: ['tw', 'class', 'className'],
+      text: config.attributes,
     },
   },
   // { '@apply': `...` }
@@ -62,7 +62,7 @@ export const getSourceMatchers = (
         kind: SyntaxKind.CallExpression,
         expression: {
           kind: SyntaxKind.Identifier,
-          text: ['style', 'styled'],
+          text: config.styles,
         },
       },
     },
@@ -92,7 +92,7 @@ export const getSourceMatchers = (
               kind: SyntaxKind.CallExpression,
               expression: {
                 kind: SyntaxKind.Identifier,
-                text: ['style', 'styled'],
+                text: config.styles,
               },
             },
           },
@@ -123,7 +123,7 @@ export const getSourceMatchers = (
                 kind: SyntaxKind.CallExpression,
                 expression: {
                   kind: SyntaxKind.Identifier,
-                  text: ['style', 'styled'],
+                  text: config.styles,
                 },
               },
             },
