@@ -75,7 +75,7 @@ declare module 'twind' {
 }
 ```
 
-> If no `twind.config.{ts,js,cjs,mjs}` and a `tailwind.config.{ts,js,cjs,mjs}` exists, the compatible values from the tailwind config will be used.
+> If no `twind.config.{ts,js,cjs,mjs}` exists and a `tailwind.config.{ts,js,cjs,mjs}` is found, the compatible values from the tailwind config will be used.
 
 ### With VS Code
 
