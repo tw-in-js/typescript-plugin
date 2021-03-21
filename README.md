@@ -1,8 +1,9 @@
-# @twind/typescript-plugin
 
 <div align="center">
 
-> TypeScript language service plugin that adds IntelliSense for Twind
+# @twind/typescript-plugin
+
+TypeScript language service plugin that adds IntelliSense for [Twind](https://twind.dev)
 
 [![MIT License](https://flat.badgen.net/github/license/tw-in-js/typescript-plugin)](https://github.com/tw-in-js/typescript-plugin/blob/main/LICENSE)
 [![Latest Release](https://flat.badgen.net/npm/v/@twind/typescript-plugin?icon=npm&label)](https://www.npmjs.com/package/@twind/typescript-plugin)
@@ -14,6 +15,11 @@
 
 ---
 
+If you are using VS Code as your editor – you can try our new *[Twind Intellisense for VS Code](https://github.com/tw-in-js/vscode-twind-intellisense)* extension:
+
+[Install via the Visual Studio Code Marketplace →](https://marketplace.visualstudio.com/items?itemName=sastan.twind-intellisense)
+
+---
 <!-- prettier-ignore-start -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
