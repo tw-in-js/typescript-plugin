@@ -21,11 +21,12 @@ import type {
 } from 'twind'
 import { theme, create, silent } from 'twind'
 import { VirtualSheet, virtualSheet } from 'twind/sheets'
-import { getConfig } from './load-twind-config'
+import { getConfig } from './load'
 import { getColor } from './colors'
 
 import type { ConfigurationManager } from './configuration'
 import { watch } from './watch'
+import { parse } from './parser'
 
 const isCSSProperty = (key: string, value: CSSRuleValue): boolean =>
   !'@:&'.includes(key[0]) && ('rg'.includes((typeof value)[5]) || Array.isArray(value))
@@ -300,7 +301,7 @@ export class Twind {
     return state && generateCSS(state.sheet, state.tw, rule)
   }
 
-  getDiagnostics(...tokens: Token[]): ReportInfo[] | undefined {
+  getDiagnostics(rule: string): ReportInfo[] | undefined {
     const { state } = this
 
     if (!state) {
@@ -308,7 +309,62 @@ export class Twind {
     }
 
     state.sheet.reset()
-    state.tw(...tokens)
+
+    // verifiy rule with types: align-xxx -> invalid
+    const { completions } = this
+
+    for (const parsed of parse(rule)) {
+      const [, arbitrayValue] = parsed.name.match(/-(\[[^\]]+])/) || []
+
+      const utilitiyExists =
+        !parsed.name ||
+        completions.tokens.some((completion) => {
+          if (completion.kind != 'utility') return false
+
+          if (arbitrayValue) {
+            return (
+              completion.theme &&
+              completion.raw.replace(`{{theme(${completion.theme?.section})}}`, arbitrayValue) ===
+                parsed.name
+            )
+          }
+
+          switch (completion.interpolation) {
+            case 'string': {
+              return parsed.name.startsWith(completion.value) && parsed.name != completion.value
+            }
+            case 'number': {
+              return (
+                parsed.name.startsWith(completion.value) &&
+                parsed.name != completion.value &&
+                Number(parsed.name.slice(completion.value.length)) >= 0
+              )
+            }
+            case 'nonzero': {
+              return (
+                parsed.name.startsWith(completion.value) &&
+                parsed.name != completion.value &&
+                Number(parsed.name.slice(completion.value.length)) > 0
+              )
+            }
+            default: {
+              return completion.value == parsed.name
+            }
+          }
+        })
+
+      if (!utilitiyExists) {
+        state.reports.push({
+          id: 'UNKNOWN_DIRECTIVE',
+          rule: parsed.name,
+        })
+      }
+    }
+
+    if (!state.reports.length) {
+      state.tw(rule)
+    }
+
     return [...state.reports]
   }
 
@@ -347,6 +403,7 @@ export class Twind {
       const visit = (node: TS.Node) => {
         if (tokens.length) return
 
+        // TODO use CoreCompletionTokens and UserCompletionTokens
         if (
           ts.isTypeAliasDeclaration(node) &&
           ts.isIdentifier(node.name) &&
@@ -393,6 +450,7 @@ export class Twind {
         kind,
         raw,
         value,
+        interpolation,
         label,
         color,
         theme,
@@ -495,6 +553,11 @@ export class Twind {
           )
         }
       } else {
+        const x = createCompletionToken(prefix, {
+          raw: directive,
+          label: directive,
+          interpolation: value as CompletionToken['interpolation'],
+        })
         completionTokens.set(
           prefix,
           createCompletionToken(prefix, {
@@ -503,6 +566,8 @@ export class Twind {
             interpolation: value as CompletionToken['interpolation'],
           }),
         )
+
+        this.logger.log(`interpolation: "${x.value}" (${x.interpolation})`)
       }
     })
 

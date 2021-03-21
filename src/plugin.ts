@@ -1,11 +1,48 @@
 import type * as ts from 'typescript/lib/tsserverlibrary'
-import type { TemplateSettings } from 'typescript-template-language-service-decorator'
+import type {
+  TemplateContext,
+  TemplateSettings,
+} from 'typescript-template-language-service-decorator'
 
-import { decorateWithTemplateLanguageService } from 'typescript-template-language-service-decorator'
+import StandardScriptSourceHelper from 'typescript-template-language-service-decorator/lib/standard-script-source-helper'
+
 import { ConfigurationManager, TwindPluginConfiguration } from './configuration'
-import { TwindTemplateLanguageService } from './language-service'
+import { TwindLanguageService } from './language-service'
+import { StandardTemplateSourceHelper } from './source-helper'
 import { LanguageServiceLogger } from './logger'
 import { getSubstitutions } from './substituter'
+import { getSourceMatchers } from './source-matcher'
+
+// https://github.com/microsoft/typescript-template-language-service-decorator/blob/main/src/standard-template-source-helper.ts#L75
+
+const translateTextSpan = (context: TemplateContext, span: ts.TextSpan): ts.TextSpan => {
+  return {
+    start: context.node.getStart() + 1 + span.start,
+    length: span.length,
+  }
+}
+
+const translateCompletionInfo = (
+  context: TemplateContext,
+  info: ts.CompletionInfo,
+): ts.CompletionInfo => {
+  return {
+    ...info,
+    entries: info.entries.map((entry) => translateCompletionEntry(context, entry)),
+  }
+}
+
+const translateCompletionEntry = (
+  context: TemplateContext,
+  entry: ts.CompletionEntry,
+): ts.CompletionEntry => {
+  return {
+    ...entry,
+    replacementSpan: entry.replacementSpan
+      ? translateTextSpan(context, entry.replacementSpan)
+      : undefined,
+  }
+}
 
 export class TwindPlugin {
   private readonly typescript: typeof ts
@@ -22,62 +59,99 @@ export class TwindPlugin {
 
     this._logger.log('config: ' + JSON.stringify(this._configManager.config))
 
+    const { languageService } = info
+
     if (!isValidTypeScriptVersion(this.typescript)) {
       this._logger.log('Invalid typescript version detected. TypeScript 4.1 required.')
-      return info.languageService
+      return languageService
     }
 
-    // Set up decorator
-    // const { languageService } = info
+    const ttls = new TwindLanguageService(this.typescript, info, this._configManager, this._logger)
 
-    // this.typescript.parseIsolatedEntityName(text, languageVersion)
-    // info.languageService = {
-    //   ...info.languageService,
+    const templateSettings = getTemplateSettings(this._configManager, this._logger)
 
-    //   getCompletionEntrySymbol(fileName, position, name, source) {
-    //     const prior = languageService.getCompletionEntrySymbol(fileName, position, name, source)
-
-    //     logger.log(
-    //       'getCompletionEntrySymbol: ' + JSON.stringify({ fileName, position, name, source }),
-    //     )
-
-    //     // prior.entries = prior.entries.filter((e) => e.name !== 'caller')
-    //     return prior
-    //   },
-    //   getCompletionsAtPosition: (fileName, position, options) => {
-    //     // emmetCompletions: false
-    //     const prior = languageService.getCompletionsAtPosition(fileName, position, options)
-
-    //     // options?.triggerCharacter
-    //     // TODO match file [t]sx?
-    //     const sourceFile = info.languageService.getProgram()?.getSourceFile(fileName)
-    //     sourceFile?.getLineAndCharacterOfPosition(position)
-    //     sourceFile?.getText()
-    //     // IDEA: find last "'` before position
-
-    //     // logger.log('getCompletionsAtPosition: ' + JSON.stringify({ fileName, position }))
-
-    //     console.log('')
-    //     console.log('')
-    //     console.log(
-    //       'getCompletionsAtPosition',
-    //       JSON.stringify({ fileName, position, options, prior }, null, 2),
-    //     )
-    //     console.log('')
-    //     console.log('')
-    //     // prior.entries = prior.entries.filter((e) => e.name !== 'caller')
-    //     return prior
-    //   },
-    // }
-
-    return decorateWithTemplateLanguageService(
+    const helper = new StandardTemplateSourceHelper(
       this.typescript,
-      info.languageService,
-      info.project,
-      new TwindTemplateLanguageService(this.typescript, info, this._configManager, this._logger),
-      getTemplateSettings(this._configManager, this._logger),
-      { logger: this._logger },
+      templateSettings,
+      new StandardScriptSourceHelper(this.typescript, info.project),
+      getSourceMatchers(this.typescript, templateSettings),
     )
+
+    // Set up decorator
+    return {
+      ...languageService,
+
+      getCompletionEntryDetails: (fileName, position, name, ...rest: any[]) => {
+        const context = helper.getTemplate(fileName, position)
+
+        if (context) {
+          return ttls.getCompletionEntryDetails(
+            context,
+            helper.getRelativePosition(context, position),
+            name,
+          )
+        }
+
+        return (languageService.getCompletionsAtPosition as any)(fileName, position, name, ...rest)
+      },
+
+      getCompletionsAtPosition: (fileName, position, options) => {
+        const context = helper.getTemplate(fileName, position)
+
+        if (context) {
+          return translateCompletionInfo(
+            context,
+            ttls.getCompletionsAtPosition(context, helper.getRelativePosition(context, position)),
+          )
+        }
+
+        return languageService.getCompletionsAtPosition(fileName, position, options)
+      },
+
+      getQuickInfoAtPosition: (fileName, position) => {
+        const context = helper.getTemplate(fileName, position)
+
+        if (context) {
+          const quickInfo = ttls.getQuickInfoAtPosition(
+            context,
+            helper.getRelativePosition(context, position),
+          )
+
+          if (quickInfo) {
+            return {
+              ...quickInfo,
+              textSpan: translateTextSpan(context, quickInfo.textSpan),
+            }
+          }
+        }
+
+        return languageService.getQuickInfoAtPosition(fileName, position)
+      },
+
+      getSemanticDiagnostics: (fileName) => {
+        const diagnostics = [...languageService.getSemanticDiagnostics(fileName)]
+
+        helper.getAllTemplates(fileName).forEach((context) => {
+          for (const diagnostic of ttls.getSemanticDiagnostics(context)) {
+            diagnostics.push({
+              ...diagnostic,
+              start: context.node.getStart() + 1 + (diagnostic.start || 0),
+            })
+          }
+        })
+
+        return diagnostics
+      },
+    }
+
+    // return decorateWithTemplateLanguageService(
+    //   this.typescript,
+    //   info.languageService,
+    //   info.project,
+    //   new TwindLanguageService(this.typescript, info, this._configManager, this._logger),
+    //   getTemplateSettings(this._configManager, this._logger),
+    //   { logger: this._logger },
+    // )
   }
 
   public onConfigurationChanged(config: TwindPluginConfiguration): void {

@@ -15,6 +15,38 @@ const test = suite('Parser')
   ['', []],
   ['   \t \n\r ', []],
   [
+    'focus:',
+    [
+      {
+        raw: '',
+        value: 'focus:',
+        name: '',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: { start: 6, end: 6 },
+        spans: [{ start: 0, end: 6 }],
+        variants: [{ name: 'focus', raw: 'focus:', value: 'focus:', loc: { start: 0, end: 6 } }],
+      },
+    ],
+  ],
+  [
+    'focus: ',
+    [
+      {
+        raw: '',
+        value: 'focus:',
+        name: '',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: { start: 6, end: 6 },
+        spans: [{ start: 0, end: 6 }],
+        variants: [{ name: 'focus', raw: 'focus:', value: 'focus:', loc: { start: 0, end: 6 } }],
+      },
+    ],
+  ],
+  [
     'underline',
     [
       {

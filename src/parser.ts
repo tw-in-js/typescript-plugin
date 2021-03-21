@@ -330,7 +330,7 @@ export function astish(text: string, atPosition = Infinity): Group {
       case '\t':
       case '\n':
       case '\r':
-        if (buffer) {
+        if (buffer || node.kind == NodeKind.Variant) {
           parent = node = node.next = createIdentifier(
             node,
             parent,
@@ -358,7 +358,7 @@ export function astish(text: string, atPosition = Infinity): Group {
   }
 
   // Consume remaining buffer or completion triggered at the end
-  if (buffer || atPosition === text.length) {
+  if (buffer || node.kind == NodeKind.Variant || atPosition === text.length) {
     node.next = createIdentifier(node, parent, buffer, start, true)
   }
 

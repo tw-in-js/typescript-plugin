@@ -68,7 +68,7 @@ const prepareText = (value: string): string =>
     .replace(/\d(?!$|\d)/g, '$& ')
     .replace(/\s+/g, ' ')
 
-export class TwindTemplateLanguageService implements TemplateLanguageService {
+export class TwindLanguageService implements TemplateLanguageService {
   private readonly typescript: typeof ts
   private readonly configurationManager: ConfigurationManager
   private readonly logger: Logger
@@ -234,11 +234,11 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
           switch (info.id) {
             case 'UNKNOWN_DIRECTIVE': {
               return {
-                messageText: `Unknown utility "${rule.name}"`,
+                messageText: `Unknown utility "${info.rule}"`,
                 start: rule.loc.start,
                 length: rule.loc.end - rule.loc.start,
                 file: context.node.getSourceFile(),
-                category: this.typescript.DiagnosticCategory.Warning,
+                category: this.typescript.DiagnosticCategory.Error,
                 code: ErrorCodes.UNKNOWN_DIRECTIVE,
               }
             }
@@ -251,17 +251,36 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
                   start: rule.loc.start,
                   length: rule.loc.end - rule.loc.start,
                   file: context.node.getSourceFile(),
-                  category: this.typescript.DiagnosticCategory.Warning,
+                  category: this.typescript.DiagnosticCategory.Error,
                   code: ErrorCodes.UNKNOWN_THEME_VALUE,
                 }
               }
             }
           }
         })
+        // Check non-empty directive
+        .concat(
+          rule.name
+            ? undefined
+            : {
+                messageText: `Missing utility class`,
+                start: rule.loc.start,
+                length: rule.loc.end - rule.loc.start,
+                file: context.node.getSourceFile(),
+                category: this.typescript.DiagnosticCategory.Error,
+                code: ErrorCodes.UNKNOWN_DIRECTIVE,
+              },
+        )
         // check if every rule.variants exist
         .concat(
           rule.variants
-            .filter((variant) => !this._twind.completions.variants.has(variant.value))
+            .filter(
+              (variant) =>
+                !(
+                  this._twind.completions.variants.has(variant.value) ||
+                  (variant.value[0] == '[' && variant.value[variant.value.length - 2] == ']')
+                ),
+            )
             .map(
               (variant): ts.Diagnostic => ({
                 messageText: `Unknown variant "${variant.value}"`,
@@ -390,13 +409,8 @@ export class TwindTemplateLanguageService implements TemplateLanguageService {
         keys: [(completion) => prepareText(completion.value + ' ' + completion.detail)],
         baseSort,
       }),
-      ...matchSorter(utilities, needle, {
-        // threshold: matchSorter.rankings.ACRONYM,
-        keys: [(completion) => prepareText(completion.value)],
-        baseSort,
-      }),
-      ...matchSorter(variants, needle, {
-        // threshold: matchSorter.rankings.ACRONYM,
+      ...matchSorter([...utilities, ...variants], needle, {
+        // threshold: matchSorter.rankings.MATCHES,
         keys: [(completion) => prepareText(completion.value)],
         baseSort,
       }),

@@ -31,10 +31,10 @@ export const findConfig = (cwd = process.cwd()): string | undefined =>
   findUp.sync(TWIND_CONFIG_FILES, { cwd }) ||
   findUp.sync(TAILWIND_CONFIG_FILES, { cwd })
 
-export const loadConfig = (configFile: string, cwd = process.cwd()): Configuration => {
+export const loadFile = <T>(file: string, cwd = process.cwd()): T => {
   const result = buildSync({
     bundle: true,
-    entryPoints: [configFile],
+    entryPoints: [file],
     format: 'cjs',
     platform: 'node',
     target: 'es2018', // `node${process.versions.node}`,
@@ -60,13 +60,19 @@ export const loadConfig = (configFile: string, cwd = process.cwd()): Configurati
     result.outputFiles[0].text,
   )(
     module.exports,
-    Module.createRequire?.(configFile) || Module.createRequireFromPath(configFile),
+    Module.createRequire?.(file) || Module.createRequireFromPath(file),
     module,
-    configFile,
-    Path.dirname(configFile),
+    file,
+    Path.dirname(file),
   )
 
-  const config = module.exports.default || module.exports || {}
+  return module.exports as T
+}
+
+export const loadConfig = (configFile: string, cwd = process.cwd()): Configuration => {
+  const exports = loadFile<{ default: Configuration } & Configuration>(configFile, cwd)
+
+  const config = exports.default || exports || {}
 
   // could be tailwind config
   if (
