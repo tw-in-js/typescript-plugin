@@ -80,6 +80,15 @@ const baseSort: NonNullable<MatchSorterOptions<CompletionToken>['baseSort']> = (
     return -1
   }
 
+  // Sort interpolated values last
+  if (a.value.endsWith('-') && !b.value.endsWith('-')) {
+    return 1
+  }
+
+  if (!a.value.endsWith('-') && b.value.endsWith('-')) {
+    return -1
+  }
+
   return collator.compare(a.label, b.label)
 }
 

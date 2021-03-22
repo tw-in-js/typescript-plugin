@@ -601,7 +601,6 @@ export class Twind {
           prefix,
           createCompletionToken(prefix, {
             raw: directive,
-            label: directive,
             interpolation: value as CompletionToken['interpolation'],
           }),
         )
