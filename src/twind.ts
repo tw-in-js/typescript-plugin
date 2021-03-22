@@ -4,6 +4,7 @@ import type { Logger } from 'typescript-template-language-service-decorator'
 import type * as TS from 'typescript/lib/tsserverlibrary'
 
 import cssbeautify from 'cssbeautify'
+import stringify from 'fast-json-stable-stringify'
 
 import type {
   Context,
@@ -405,11 +406,14 @@ export class Twind {
       }
     }
 
-    if (!state.reports.length) {
-      state.tw(rule)
-    }
+    state.tw(rule)
 
-    return [...state.reports]
+    // Remove duplicates
+    return [
+      ...new Map([
+        ...state.reports.map((report): [string, ReportInfo] => [stringify(report), report]),
+      ]).values(),
+    ]
   }
 
   get completions(): Completions {
