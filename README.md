@@ -291,6 +291,25 @@ Allows to enabling/disabling additional debug information shown in hover and com
 
 Now the debug information is shown.
 
+### Enable
+
+Allows to enabling/disabling the plugin (default: `true`).
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@twind/typescript-plugin",
+        "debug": false
+      }
+    ]
+  }
+}
+```
+
+Now the plugin is disabled.
+
 ## Contribute
 
 Thanks for being willing to contribute!

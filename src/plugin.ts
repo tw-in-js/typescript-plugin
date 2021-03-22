@@ -1,8 +1,5 @@
 import type * as ts from 'typescript/lib/tsserverlibrary'
-import type {
-  TemplateContext,
-  TemplateSettings,
-} from 'typescript-template-language-service-decorator'
+import type { TemplateContext } from 'typescript-template-language-service-decorator'
 
 import StandardScriptSourceHelper from 'typescript-template-language-service-decorator/lib/standard-script-source-helper'
 
@@ -10,7 +7,6 @@ import { ConfigurationManager, TwindPluginConfiguration } from './configuration'
 import { TwindLanguageService } from './language-service'
 import { StandardTemplateSourceHelper } from './source-helper'
 import { LanguageServiceLogger } from './logger'
-import { getSourceMatchers } from './source-matcher'
 
 // https://github.com/microsoft/typescript-template-language-service-decorator/blob/main/src/standard-template-source-helper.ts#L75
 
@@ -65,6 +61,11 @@ export class TwindPlugin {
       return languageService
     }
 
+    let enable = this._configManager.config.enable
+    this._configManager.onUpdatedConfig(() => {
+      enable = this._configManager.config.enable
+    })
+
     const ttls = new TwindLanguageService(this.typescript, info, this._configManager, this._logger)
 
     const helper = new StandardTemplateSourceHelper(
@@ -79,14 +80,16 @@ export class TwindPlugin {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getCompletionEntryDetails: (fileName, position, name, ...rest: any[]) => {
-        const context = helper.getTemplate(fileName, position)
+        if (enable) {
+          const context = helper.getTemplate(fileName, position)
 
-        if (context) {
-          return ttls.getCompletionEntryDetails(
-            context,
-            helper.getRelativePosition(context, position),
-            name,
-          )
+          if (context) {
+            return ttls.getCompletionEntryDetails(
+              context,
+              helper.getRelativePosition(context, position),
+              name,
+            )
+          }
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -94,31 +97,35 @@ export class TwindPlugin {
       },
 
       getCompletionsAtPosition: (fileName, position, options) => {
-        const context = helper.getTemplate(fileName, position)
+        if (enable) {
+          const context = helper.getTemplate(fileName, position)
 
-        if (context) {
-          return translateCompletionInfo(
-            context,
-            ttls.getCompletionsAtPosition(context, helper.getRelativePosition(context, position)),
-          )
+          if (context) {
+            return translateCompletionInfo(
+              context,
+              ttls.getCompletionsAtPosition(context, helper.getRelativePosition(context, position)),
+            )
+          }
         }
 
         return languageService.getCompletionsAtPosition(fileName, position, options)
       },
 
       getQuickInfoAtPosition: (fileName, position) => {
-        const context = helper.getTemplate(fileName, position)
+        if (enable) {
+          const context = helper.getTemplate(fileName, position)
 
-        if (context) {
-          const quickInfo = ttls.getQuickInfoAtPosition(
-            context,
-            helper.getRelativePosition(context, position),
-          )
+          if (context) {
+            const quickInfo = ttls.getQuickInfoAtPosition(
+              context,
+              helper.getRelativePosition(context, position),
+            )
 
-          if (quickInfo) {
-            return {
-              ...quickInfo,
-              textSpan: translateTextSpan(context, quickInfo.textSpan),
+            if (quickInfo) {
+              return {
+                ...quickInfo,
+                textSpan: translateTextSpan(context, quickInfo.textSpan),
+              }
             }
           }
         }
@@ -129,14 +136,16 @@ export class TwindPlugin {
       getSemanticDiagnostics: (fileName) => {
         const diagnostics = [...languageService.getSemanticDiagnostics(fileName)]
 
-        helper.getAllTemplates(fileName).forEach((context) => {
-          for (const diagnostic of ttls.getSemanticDiagnostics(context)) {
-            diagnostics.push({
-              ...diagnostic,
-              start: context.node.getStart() + 1 + (diagnostic.start || 0),
-            })
-          }
-        })
+        if (enable) {
+          helper.getAllTemplates(fileName).forEach((context) => {
+            for (const diagnostic of ttls.getSemanticDiagnostics(context)) {
+              diagnostics.push({
+                ...diagnostic,
+                start: context.node.getStart() + 1 + (diagnostic.start || 0),
+              })
+            }
+          })
+        }
 
         return diagnostics
       },
@@ -154,7 +163,7 @@ export class TwindPlugin {
 
   public onConfigurationChanged(config: TwindPluginConfiguration): void {
     if (this._logger) {
-      this._logger.log('onConfigurationChanged')
+      this._logger.log('onConfigurationChanged: ' + JSON.stringify(config))
     }
 
     this._configManager.updateFromPluginConfig(config)

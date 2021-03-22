@@ -4,6 +4,7 @@ export interface TwindPluginConfiguration {
   readonly attributes: ReadonlyArray<string>
   readonly styles: ReadonlyArray<string>
   readonly debug?: boolean
+  readonly enable: boolean
   // Readonly validate: boolean;
   // readonly lint: { [key: string]: any };
   // readonly emmet: { [key: string]: any };
@@ -15,6 +16,7 @@ export class ConfigurationManager {
     attributes: ['tw', 'class', 'className'],
     styles: ['style', 'styled'],
     debug: false,
+    enable: true,
     // Validate: true,
     // lint: {
     //     emptyRules: 'ignore',
@@ -42,6 +44,7 @@ export class ConfigurationManager {
     this._configuration = {
       ...mergedConfig,
       debug: 'true' == String(mergedConfig.debug),
+      enable: 'false' != String(mergedConfig.enable),
     }
 
     for (const listener of this._configUpdatedListeners) {
