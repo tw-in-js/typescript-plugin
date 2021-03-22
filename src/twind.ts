@@ -359,19 +359,15 @@ export class Twind {
     for (const parsed of parse(rule)) {
       if (/\${x*}/.test(parsed.name)) continue
 
-      const [, arbitrayValue] = parsed.name.match(/-(\[[^\]]+])/) || []
+      const hasArbitrayValue = /-(\[[^\]]+])/.test(parsed.name)
 
       const utilitiyExists =
         !parsed.name ||
         completions.tokens.some((completion) => {
           if (completion.kind != 'utility') return false
 
-          if (arbitrayValue) {
-            return (
-              completion.theme &&
-              completion.raw.replace(`{{theme(${completion.theme?.section})}}`, arbitrayValue) ===
-                parsed.name
-            )
+          if (hasArbitrayValue) {
+            return parsed.name.startsWith(completion.value) && parsed.name != completion.value
           }
 
           switch (completion.interpolation) {
@@ -536,6 +532,7 @@ export class Twind {
       // | `nonzero` // PositiveNumber
       if (value.startsWith('theme(') && value.endsWith(')')) {
         const sectionKey = value.slice(6, -1)
+
         const section = theme(sectionKey as keyof Theme)(context)
 
         Object.keys(section)
@@ -547,6 +544,7 @@ export class Twind {
 
             // Is this the base object for nested values
             const value = section[key]
+
             if (
               typeof value === 'object' &&
               Object.keys(value).every((nestedKey) => keys.includes(`${key}-${nestedKey}`))
@@ -556,7 +554,13 @@ export class Twind {
 
             return true
           })
+          // Add marker for arbitrary value
+          .concat('[')
           .forEach((key) => {
+            if (key == '[' && suffix) {
+              return
+            }
+
             let className = prefix
             if (key && key != 'DEFAULT') {
               className += key
@@ -564,6 +568,7 @@ export class Twind {
             if (className.endsWith('-')) {
               className = className.slice(0, -1)
             }
+
             className += suffix
 
             completionTokens.set(
@@ -571,7 +576,11 @@ export class Twind {
               createCompletionToken(className, {
                 kind: screens.has(className) ? 'screen' : undefined,
                 raw: directive,
-                theme: { section: sectionKey as keyof Theme, key, value: section[key] },
+                detail: key == '[' ? 'arbitrary value' : undefined,
+                theme:
+                  key == '['
+                    ? { section: sectionKey as keyof Theme, key: '', value: '' }
+                    : { section: sectionKey as keyof Theme, key, value: section[key] },
               }),
             )
           })
