@@ -1,4 +1,3 @@
-
 <div align="center">
 
 # @twind/typescript-plugin
@@ -11,15 +10,16 @@ TypeScript language service plugin that adds IntelliSense for [Twind](https://tw
 
 ![Demo](https://raw.githubusercontent.com/tw-in-js/typescript-plugin/main/assets/demo.gif)
 
-</div>
-
 ---
 
-If you are using VS Code as your editor – you can try our new *[Twind Intellisense for VS Code](https://github.com/tw-in-js/vscode-twind-intellisense)* extension:
+If you are using VS Code as your editor – you can try our new _[Twind Intellisense for VS Code](https://github.com/tw-in-js/vscode-twind-intellisense)_ extension:
 
 [Install via the Visual Studio Code Marketplace →](https://marketplace.visualstudio.com/items?itemName=sastan.twind-intellisense)
 
 ---
+
+</div>
+
 <!-- prettier-ignore-start -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -37,14 +37,20 @@ If you are using VS Code as your editor – you can try our new *[Twind Intellis
 
 ## Features
 
-Provides editor support for `tw` tagged template syntax including:
-
-- Autocomplete for [twind](https://github.com/tw-in-js/twind) variants and classes
-- Details about the generated CSS
+- IntelliSense for [twind](https://github.com/tw-in-js/twind) variants and classes within
+  - `tw` and `apply`
+  - JSX attributes (`tw`, `class`, and `className`)
+  - [style](https://twind.dev/docs/modules/twind_style.html) and `styled` (like [@twind/react](https://github.com/tw-in-js/twind-react/#readme) or [@twind/solid](https://github.com/tw-in-js/use-twind-with/tree/main/packages/solid#readme))
+- Quick Info about
+  - generated CSS
+  - used theme value
+  - the `px` value for `rem` values
+- Color preview
 - Support for grouping of variants and classes
-- Warnings on unknown classes
-- Warnings on unknown theme values
-- Warnings on unknown variants
+- Warnings on
+  - unknown classes
+  - unknown theme values
+  - unknown variants
 
 ## Installation
 
@@ -83,11 +89,7 @@ declare module 'twind' {
 
 > If no `twind.config.{ts,js,cjs,mjs}` exists and a `tailwind.config.{ts,js,cjs,mjs}` is found, the compatible values from the tailwind config will be used.
 
-### With VS Code
-
-Currently you must manually install the plugin along side TypeScript in your workspace.
-
-Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang.org/docs/handbook/tsconfig-json.html) or [`jsconfig.json`](https://code.visualstudio.com/Docs/languages/javascript#_javascript-project-jsconfigjson)
+Add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang.org/docs/handbook/tsconfig-json.html) or [`jsconfig.json`](https://code.visualstudio.com/Docs/languages/javascript#_javascript-project-jsconfigjson)
 
 ```json
 {
@@ -100,6 +102,12 @@ Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang
   }
 }
 ```
+
+See [Configuration](#configuration) below for details options.
+
+### With VS Code
+
+Currently you must manually install the plugin along side TypeScript in your workspace.
 
 Finally, run the `Select TypeScript version` command in VS Code to switch to use the workspace version of TypeScript for VS Code's JavaScript and TypeScript language support. You can find more information about managing typescript versions [in the VS Code documentation](https://code.visualstudio.com/docs/typescript/typescript-compiling#_using-the-workspace-version-of-typescript).
 
@@ -126,37 +134,9 @@ And configure Sublime to use the workspace version of TypeScript by [setting the
 }
 ```
 
-Finally add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang.org/docs/handbook/tsconfig-json.html) or [`jsconfig.json`](https://code.visualstudio.com/Docs/languages/javascript#_javascript-project-jsconfigjson) and restart Sublime.
-
-```json
-{
-  "compilerOptions": {
-    "plugins": [
-      {
-        "name": "@twind/typescript-plugin"
-      }
-    ]
-  }
-}
-```
-
 ### With Atom
 
 This plugin works with the [Atom TypeScript plugin](https://atom.io/packages/atom-typescript).
-
-Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang.org/docs/handbook/tsconfig-json.html) or [`jsconfig.json`](https://code.visualstudio.com/Docs/languages/javascript#_javascript-project-jsconfigjson) and restart Atom.
-
-```json
-{
-  "compilerOptions": {
-    "plugins": [
-      {
-        "name": "@twind/typescript-plugin"
-      }
-    ]
-  }
-}
-```
 
 To get sytnax highlighting for styled strings in Atom, consider installing the [language-babel](https://atom.io/packages/language-babel) extension.
 
@@ -164,32 +144,18 @@ To get sytnax highlighting for styled strings in Atom, consider installing the [
 
 This plugin works [Visual Studio 2017](https://www.visualstudio.com) using the TypeScript 2.5+ SDK.
 
-Then add a `plugins` section to your [`tsconfig.json`](http://www.typescriptlang.org/docs/handbook/tsconfig-json.html).
-
-```json
-{
-  "compilerOptions": {
-    "plugins": [
-      {
-        "name": "@twind/typescript-plugin"
-      }
-    ]
-  }
-}
-```
-
 Then reload your project to make sure the plugin has been loaded properly. Note that `jsconfig.json` projects are currently not supported in VS.
 
 ## Configuration
 
 ### Tags
 
-This plugin adds IntelliSense to any template literal [tagged](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals) with `tw`, `ow` or `bw`:
+This plugin adds IntelliSense to any template literal [tagged](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals) with `tw` or `apply`:
 
 ```js
-import { bw } from 'beamwind'
+import { tw } from 'twind'
 
-bw`
+tw`
   sm:hover:(
     bg-black
     text-white
@@ -214,6 +180,116 @@ You can enable IntelliSense for other tag names by configuring `"tags"`:
 ```
 
 Now strings tagged with either `tw` and `cx` will have IntelliSense.
+
+### Attributes
+
+This plugin adds IntelliSense to JSX `tw`, `class`, and `className` attributes:
+
+```js
+<span
+  className="text-purple-400"
+  tw={`
+    sm:hover:(
+      bg-black
+      text-white
+    )
+    md:(bg-white hover:text-black)
+  `}
+>...</span>
+`
+```
+
+You can enable IntelliSense for other attributes by configuring `"attributes"`:
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@twind/typescript-plugin",
+        "attributes": ["tw"]
+      }
+    ]
+  }
+}
+```
+
+Now only the `tw` attribute will have IntelliSense.
+
+### Styles
+
+This plugin adds IntelliSense to [style](https://twind.dev/docs/modules/twind_style.html) and `styled` (like [@twind/react](https://github.com/tw-in-js/twind-react/#readme) or [@twind/solid](https://github.com/tw-in-js/use-twind-with/tree/main/packages/solid#readme))
+
+```js
+// Same for style({... })
+const Button = styled("button", {
+  base: `
+    appearance-none border-none bg-transparent
+    rounded-full px-2.5
+  `,
+
+  variants: {
+    variant: {
+      gray: `
+        bg-gray-500
+        hover:bg-gray-600
+      `,
+      primary: `
+        text-white bg-purple-500
+        hover:bg-purple-600
+      `,
+    },
+
+    outlined: {
+      true: `bg-transparent ring-1`,
+    },
+  },
+
+  matches: [
+    {
+      variant: "gray",
+      outlined: true,
+      use: `ring-gray-500`,
+    },
+  }
+})
+```
+
+You can enable IntelliSense for other `style` like functions by configuring `"styles"`:
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@twind/typescript-plugin",
+        "styles": ["styled", "stitched"]
+      }
+    ]
+  }
+}
+```
+
+Now the `styled` and `stitched` functions will have IntelliSense.
+
+### Debug
+
+Allows to enabling/disabling additional debug information shown in hover and completion popups (default: `false`).
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@twind/typescript-plugin",
+        "debug": true
+      }
+    ]
+  }
+}
+```
+
+Now the debug information is shown.
 
 ## Contribute
 
