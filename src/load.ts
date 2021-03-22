@@ -87,7 +87,6 @@ export const loadConfig = (configFile: string, cwd = process.cwd()): Configurati
       Object.values(config.variants || {}).some((value) => typeof value == 'object') ||
       typeof config.prefix == 'string',
     'presets' in config ||
-      'important' in config ||
       'separator' in config ||
       'variantOrder' in config ||
       'corePlugins' in config ||
