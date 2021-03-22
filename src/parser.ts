@@ -279,16 +279,16 @@ export function astish(text: string, atPosition = Infinity): Group {
   let parent: Exclude<Node, null> = root
   let node: Exclude<Node, null> = root
 
-  for (let char: string, dynamic = false, position = 0; (char = text[position]); position++) {
+  for (let char: string, inArbitrary = false, position = 0; (char = text[position]); position++) {
     if (position >= atPosition) {
       node.next = createIdentifier(node, parent, buffer, start)
 
       return root
     }
 
-    if (dynamic || char == '[') {
+    if ((inArbitrary && !/\s/.test(char)) || char == '[') {
       buffer += char
-      dynamic = char != ']'
+      inArbitrary = char != ']'
       continue
     }
 

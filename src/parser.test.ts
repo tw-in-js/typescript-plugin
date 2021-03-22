@@ -79,6 +79,85 @@ const test = suite('Parser')
     ],
   ],
   [
+    '[lang]:underline',
+    [
+      {
+        raw: 'underline',
+        value: '[lang]:underline',
+        name: 'underline',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: { start: 7, end: 16 },
+        spans: [{ start: 0, end: 16 }],
+        variants: [{ name: '[lang]', raw: '[lang]:', value: '[lang]:', loc: { start: 0, end: 7 } }],
+      },
+    ],
+  ],
+  // Invalid arbitray value
+  [
+    'text-[hsl(100, 50%, 10%)]',
+    [
+      {
+        raw: 'text-[hsl(100,',
+        value: 'text-[hsl(100,',
+        name: 'text-[hsl(100,',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 0,
+          end: 14,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 14,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: '50%,',
+        value: '50%,',
+        name: '50%,',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 15,
+          end: 19,
+        },
+        spans: [
+          {
+            start: 15,
+            end: 19,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: '10%)]',
+        value: '10%)]',
+        name: '10%)]',
+        prefix: '',
+        important: false,
+        negated: false,
+        loc: {
+          start: 20,
+          end: 25,
+        },
+        spans: [
+          {
+            start: 20,
+            end: 25,
+          },
+        ],
+        variants: [],
+      },
+    ],
+  ],
+  [
     '-mx-5!',
     [
       {
