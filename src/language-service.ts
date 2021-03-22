@@ -45,17 +45,33 @@ const collator = new Intl.Collator(undefined, {
   caseFirst: 'false',
 })
 
-const baseSort: NonNullable<MatchSorterOptions<CompletionToken>['baseSort']> = (a, b) => {
+const KIND_SORTING: CompletionToken['kind'][] = ['screen', 'utility', 'variant']
+
+const baseSort: NonNullable<MatchSorterOptions<CompletionToken>['baseSort']> = (
+  { item: a },
+  { item: b },
+) => {
+  const kindOrder = KIND_SORTING.indexOf(a.kind) - KIND_SORTING.indexOf(b.kind)
+
+  if (kindOrder) {
+    return kindOrder
+  }
+
+  // Sort screens by their min width
+  if (a.kind == 'screen') {
+    return collator.compare(a.detail + ' ' + a.value, b.detail + ' ' + b.value)
+  }
+
   // Sort negated labels last
-  if (a.item.label[0] == '-' && b.item.label[0] != '-') {
+  if (a.label[0] == '-' && b.label[0] != '-') {
     return 1
   }
 
-  if (a.item.label[0] != '-' && b.item.label[0] == '-') {
+  if (a.label[0] != '-' && b.label[0] == '-') {
     return -1
   }
 
-  return collator.compare(a.item.label, b.item.label)
+  return collator.compare(a.label, b.label)
 }
 
 // By default, match-sorter assumes spaces to be the word separator.
@@ -407,18 +423,16 @@ export class TwindLanguageService implements TemplateLanguageService {
 
     // TODO Start a new directive group
     const needle = prepareText(rule.raw)
-    const matched = [
-      ...matchSorter(screens, needle, {
-        // threshold: matchSorter.rankings.MATCHES,
-        keys: [(completion) => prepareText(completion.value + ' ' + completion.detail)],
-        baseSort,
-      }),
-      ...matchSorter([...utilities, ...variants], needle, {
-        // threshold: matchSorter.rankings.MATCHES,
-        keys: [(completion) => prepareText(completion.value)],
-        baseSort,
-      }),
-    ]
+    const matched = matchSorter([...screens, ...utilities, ...variants], needle, {
+      // threshold: matchSorter.rankings.MATCHES,
+      keys: [
+        (completion) =>
+          completion.kind == 'screen'
+            ? prepareText(completion.value + ' ' + completion.detail)
+            : prepareText(completion.value),
+      ],
+      baseSort,
+    })
 
     if (rule.prefix && (!rule.raw || rule.raw === '&')) {
       const selfRef = completions.tokens.find(
