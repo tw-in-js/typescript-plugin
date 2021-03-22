@@ -219,16 +219,18 @@ export class StandardTemplateSourceHelper implements TemplateSourceHelper {
       return undefined
     }
 
-    if (this.typescript.isTaggedTemplateExpression(node)) {
+    const { typescript: ts } = this
+
+    if (ts.isTaggedTemplateExpression(node)) {
       return this.getValidTemplateNode(node.template)
     }
 
     // TODO if templateSettings.enableForStringWithSubstitutions
-    if (this.typescript.isTemplateHead(node) || this.typescript.isTemplateSpan(node)) {
+    if (ts.isTemplateHead(node) || ts.isTemplateSpan(node)) {
       return this.getValidTemplateNode(node.parent)
     }
 
-    if (this.typescript.isTemplateMiddle(node) || this.typescript.isTemplateTail(node)) {
+    if (ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       return this.getValidTemplateNode(node.parent)
     }
 
@@ -236,23 +238,25 @@ export class StandardTemplateSourceHelper implements TemplateSourceHelper {
     // export type StringLiteralLike = StringLiteral | NoSubstitutionTemplateLiteral;
     // export type PropertyNameLiteral = Identifier | StringLiteralLike | NumericLiteral;
     if (
-      !(
-        this.typescript.isStringLiteralLike(node) ||
-        this.typescript.isTemplateLiteral(node) ||
-        this.typescript.isTemplateExpression(node)
-      )
+      !(ts.isStringLiteralLike(node) || ts.isTemplateLiteral(node) || ts.isTemplateExpression(node))
     ) {
+      return undefined
+    }
+
+    // Ignore strings that are part of an expression
+    // x + '...'
+    if (ts.isStringLiteralLike(node) && ts.isBinaryExpression(node.parent)) {
       return undefined
     }
 
     let currentNode: ts.Node = node
 
-    while (currentNode && !this.typescript.isSourceFile(currentNode)) {
+    while (currentNode && !ts.isSourceFile(currentNode)) {
       if (match(currentNode, this.sourceMatchers)) {
         return node
       }
 
-      if (this.typescript.isCallLikeExpression(currentNode)) {
+      if (ts.isCallLikeExpression(currentNode)) {
         return undefined
       }
 
