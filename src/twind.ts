@@ -1,4 +1,6 @@
 import * as path from 'path'
+import Module from 'module'
+import { fileURLToPath, pathToFileURL } from 'url'
 
 import type { Logger } from 'typescript-template-language-service-decorator'
 import type * as TS from 'typescript/lib/tsserverlibrary'
@@ -235,7 +237,7 @@ export class Twind {
       return this._state
     }
 
-    const program = this.info.languageService.getProgram()
+    let program = this.info.languageService.getProgram()
 
     if (!program) {
       return undefined
@@ -263,16 +265,54 @@ export class Twind {
     })
 
     // Prefer project twind and fallback to bundled twind
-    const twindDTSFile = this.info.project
+    let twindDTSFile = this.info.project
       .resolveModuleNames(['twind'], program.getRootFileNames()[0])
       .map((moduleName) => moduleName?.resolvedFileName)[0]
 
-    const twindDTSSourceFile =
+    this.logger.log('local twind dts: ' + twindDTSFile)
+
+    let twindDTSSourceFile =
       (twindDTSFile &&
         program.getSourceFiles().find((sourceFile) => sourceFile.fileName == twindDTSFile)) ||
       program
         .getSourceFiles()
         .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
+
+    // No local twind but a twind.config -> use our twind
+    if (
+      !twindDTSFile &&
+      !twindDTSSourceFile &&
+      configFile &&
+      /twind\.config\.\w+$/.test(configFile)
+    ) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const from: string | URL = import.meta.url || pathToFileURL(__filename)
+
+      const { resolve } =
+        Module.createRequire?.(from) || Module.createRequireFromPath(fileURLToPath(from))
+
+      try {
+        twindDTSFile = resolve('twind').replace(/\.\w+$/, '.d.ts')
+        this.logger.log('builtin twind dts: ' + twindDTSFile)
+      } catch {
+        // ignore
+      }
+    }
+
+    if (twindDTSFile) {
+      program = this.typescript.createProgram({
+        rootNames: [...program.getRootFileNames(), twindDTSFile],
+        options: program.getCompilerOptions(),
+        // projectReferences?: readonly ProjectReference[];
+        // host?: program.getCom
+        oldProgram: program,
+      })
+
+      twindDTSSourceFile = program
+        .getSourceFiles()
+        .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
+    }
 
     this.logger.log('twindDTSSourceFile: ' + twindDTSSourceFile?.fileName)
 
