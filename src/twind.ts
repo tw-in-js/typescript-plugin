@@ -638,8 +638,8 @@ function generateCSS(
       // remove * { } rules
       .filter((rule) => !/^\s*\*\s*{/.test(rule))
       .join('\n')
-      // Add whitespace after ,
-      .replace(/(,)(\S)/g, '$1 $2'),
+      // Add whitespace after non-escaped ,
+      .replace(/([^\\],)(\S)/g, '$1 $2'),
 
     {
       autosemicolon: true,
