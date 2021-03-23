@@ -76,7 +76,11 @@ class PlaceholderSubstituter {
   }
 }
 
+const kText = Symbol('kText')
+
 class StandardTemplateContext /* implements TemplateContext */ {
+  private [kText]: string | undefined = undefined
+
   constructor(
     public readonly typescript: typeof ts,
     public readonly fileName: string,
@@ -113,13 +117,16 @@ class StandardTemplateContext /* implements TemplateContext */ {
 
   // @memoize
   public get text(): string {
-    return this.typescript.isTemplateExpression(this.node)
-      ? PlaceholderSubstituter.replacePlaceholders(
-          this.typescript,
-          this.templateSettings,
-          this.node,
-        )
-      : this.node.text
+    return (
+      this[kText] ||
+      (this[kText] = this.typescript.isTemplateExpression(this.node)
+        ? PlaceholderSubstituter.replacePlaceholders(
+            this.typescript,
+            this.templateSettings,
+            this.node,
+          )
+        : this.node.text)
+    )
   }
 
   // @memoize
