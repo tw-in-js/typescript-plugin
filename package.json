@@ -25,6 +25,7 @@
     ".": "./src/index.ts",
     "./package.json": "./package.json"
   },
+  "// Disable browser builds": "",
   "browser": false,
   "scripts": {
     "build": "distilt",
@@ -87,7 +88,7 @@
   },
   "sideEffects": false,
   "peerDependencies": {
-    "twind": ">=0.16.8 <2"
+    "twind": ">=0.16.9 <2"
   },
   "peerDependenciesMeta": {
     "twind": {
@@ -96,10 +97,10 @@
   },
   "dependencies": {
     "cssbeautify": "^0.3.1",
-    "esbuild": "^0.9.3",
     "fast-json-stable-stringify": "^2.1.0",
     "match-sorter": "^6.3.0",
-    "twind": "^0.16.8",
+    "sucrase": "^3.17.1",
+    "twind": "^0.16.9",
     "typescript": "^4.1.0",
     "typescript-template-language-service-decorator": "^2.2.0",
     "vscode-languageserver-types": "^3.13.0"
@@ -109,7 +110,7 @@
     "@types/node": "^14.14.34",
     "@typescript-eslint/eslint-plugin": "^4.9.1",
     "@typescript-eslint/parser": "^4.9.1",
-    "distilt": "^0.10.3",
+    "distilt": "^0.10.4",
     "esbuild-register": "^2.3.0",
     "eslint": "^7.15.0",
     "eslint-config-prettier": "^7.0.0",

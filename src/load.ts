@@ -2,8 +2,7 @@ import type * as ts from 'typescript/lib/tsserverlibrary'
 
 import * as Path from 'path'
 import Module from 'module'
-
-import { buildSync } from 'esbuild'
+import { fileURLToPath } from 'url'
 
 import type { Configuration } from 'twind'
 
@@ -21,58 +20,34 @@ const TAILWIND_CONFIG_FILES = [
   'tailwind.config.cjs',
 ]
 
-// TODO use typescript to check files
-// this.typescript.server.toNormalizedPath(fileName)
-// info.project.containsFile()
 export const findConfig = (project: ts.server.Project, cwd = process.cwd()): string | undefined => {
   const locatePath = (files: string[]) =>
     files.map((file) => Path.resolve(cwd, file)).find((file) => project.fileExists(file))
 
   return (
+    locatePath(TWIND_CONFIG_FILES) ||
     locatePath(TWIND_CONFIG_FILES.map((file) => Path.join('config', file))) ||
     locatePath(TWIND_CONFIG_FILES.map((file) => Path.join('src', file))) ||
     locatePath(TWIND_CONFIG_FILES.map((file) => Path.join('public', file))) ||
-    locatePath(TWIND_CONFIG_FILES) ||
     locatePath(TAILWIND_CONFIG_FILES)
   )
 }
 
 export const loadFile = <T>(file: string, cwd = process.cwd()): T => {
-  const result = buildSync({
-    bundle: true,
-    entryPoints: [file],
-    format: 'cjs',
-    platform: 'node',
-    target: 'es2018', // `node${process.versions.node}`,
-    external: Module.builtinModules,
-    // Follow WMR rules
-    mainFields: ['esmodules', 'modern', 'module', 'jsnext:main', 'main'],
-    conditions: ['development', 'esmodules', 'module', 'node', 'import', 'require', 'default'],
-    sourcemap: 'inline',
-    minify: false,
-    splitting: false,
-    write: false,
-    absWorkingDir: cwd,
-  })
+  try {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const from = fileURLToPath(import.meta.url)
 
-  const module = { exports: {} as { default?: Configuration } & Configuration }
+    const require = Module.createRequire?.(from) || Module.createRequireFromPath(from)
 
-  new Function(
-    'exports',
-    'require',
-    'module',
-    '__filename',
-    '__dirname',
-    result.outputFiles[0].text,
-  )(
-    module.exports,
-    Module.createRequire?.(file) || Module.createRequireFromPath(file),
-    module,
-    file,
-    Path.dirname(file),
-  )
+    require('sucrase/register')
 
-  return module.exports as T
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require(Path.resolve(cwd, file)) as T
+  } catch {
+    return {} as T
+  }
 }
 
 export const loadConfig = (configFile: string, cwd = process.cwd()): Configuration => {
