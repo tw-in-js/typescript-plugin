@@ -250,12 +250,12 @@ export class Twind {
     )
 
     if (configFile) {
-      this.logger.log(`Loaded twind config from ${configFile}`)
+      this.logger.log(`loaded twind config from ${configFile}`)
 
       // Reset all state on config file changes
       this._watchers.push(watch(configFile, () => this._reset(), { once: true }))
     } else {
-      this.logger.log(`No twind config found`)
+      this.logger.log(`no local twind config found`)
     }
 
     const sheet = virtualSheet()
@@ -269,7 +269,9 @@ export class Twind {
       .resolveModuleNames(['twind'], program.getRootFileNames()[0])
       .map((moduleName) => moduleName?.resolvedFileName)[0]
 
-    this.logger.log('local twind dts: ' + twindDTSFile)
+    if (twindDTSFile) {
+      this.logger.log(`found local twind dts at ${twindDTSFile}`)
+    }
 
     let twindDTSSourceFile =
       (twindDTSFile &&
@@ -280,32 +282,36 @@ export class Twind {
 
     // No local twind but a twind.config -> use our twind
     if (
-      !twindDTSFile &&
       !twindDTSSourceFile &&
+      !twindDTSFile &&
       configFile &&
       /twind\.config\.\w+$/.test(configFile)
     ) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
-      const from: string | URL = import.meta.url || pathToFileURL(__filename)
+      const from = fileURLToPath(import.meta.url)
 
-      const { resolve } =
-        Module.createRequire?.(from) || Module.createRequireFromPath(fileURLToPath(from))
+      const { resolve } = Module.createRequire?.(from) || Module.createRequireFromPath(from)
 
       try {
         twindDTSFile = resolve('twind').replace(/\.\w+$/, '.d.ts')
-        this.logger.log('builtin twind dts: ' + twindDTSFile)
+        if (twindDTSFile) {
+          this.logger.log(`found builtin twind dts at ${twindDTSFile}`)
+        }
       } catch {
         // ignore
       }
     }
 
-    if (twindDTSFile) {
+    if (!twindDTSSourceFile && twindDTSFile) {
+      const options = program.getCompilerOptions()
+
       program = this.typescript.createProgram({
-        rootNames: [...program.getRootFileNames(), twindDTSFile],
-        options: program.getCompilerOptions(),
-        // projectReferences?: readonly ProjectReference[];
-        // host?: program.getCom
+        rootNames: [...program.getRootFileNames(), twindDTSFile.replace(/\.d\.ts$/, '.js')],
+        options: {
+          ...options,
+          typeRoots: [...(options.typeRoots || []), path.dirname(twindDTSFile)],
+        },
         oldProgram: program,
       })
 
@@ -314,19 +320,39 @@ export class Twind {
         .find((sourceFile) => sourceFile.fileName.endsWith('twind/twind.d.ts'))
     }
 
-    this.logger.log('twindDTSSourceFile: ' + twindDTSSourceFile?.fileName)
-
     if (twindDTSSourceFile) {
+      this.logger.log(`using twind completions from ${twindDTSSourceFile.fileName}`)
       this._watchers.push(watch(twindDTSSourceFile.fileName, () => this._reset(), { once: true }))
+    } else {
+      this.logger.log(`no twind completions found`)
     }
 
     const twindFile = twindDTSSourceFile?.fileName.replace(/\.d\.ts/, '.js')
+    let version: string | undefined = 'undefined'
+
     if (twindFile) {
       this._watchers.push(watch(twindFile, () => this._reset(), { once: true }))
+
+      const packageJSON = this.info.project.readFile(
+        path.join(path.dirname(twindFile), 'package.json'),
+      )
+
+      if (packageJSON) {
+        try {
+          version = (JSON.parse(packageJSON) || {}).version
+        } catch {
+          // ignore
+        }
+      }
     }
 
-    this.logger.log('twindFile: ' + twindFile)
+    if (twindFile) {
+      this.logger.log(`loading twind${version ? '@' + version : ''} from ${twindFile}`)
+    } else {
+      this.logger.log(`using builtin twind`)
+    }
 
+    // Prefer local twind
     const { tw } = (
       (twindFile &&
         (loadFile(twindFile, program.getCurrentDirectory()) as typeof import('twind'))?.create) ||
