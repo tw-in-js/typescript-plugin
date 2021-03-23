@@ -53,6 +53,7 @@ export const getSourceMatchers = (
       kind: [SyntaxKind.Identifier, SyntaxKind.StringLiteral],
       text: 'base',
     },
+    // Do not match CSS objects: `base: { color: 'blue' }`
     initializer: (node: ts.Node) => node.kind != SyntaxKind.ObjectLiteralExpression,
     // https://github.com/microsoft/typescript-template-language-service-decorator/blob/main/src/nodes.ts#L62
     // TODO styled.button, styled()
@@ -74,6 +75,8 @@ export const getSourceMatchers = (
       kind: [SyntaxKind.Identifier, SyntaxKind.StringLiteral],
       text: 'use',
     },
+    // Do not match CSS objects: `use: { color: 'blue' }`
+    initializer: (node: ts.Node) => node.kind !== SyntaxKind.ObjectLiteralExpression,
     parent: {
       kind: SyntaxKind.ObjectLiteralExpression,
       parent: {
@@ -103,6 +106,8 @@ export const getSourceMatchers = (
   // style({ variants: { [...]: { [...]: '...' }} })
   {
     kind: SyntaxKind.PropertyAssignment,
+    // Do not match CSS objects
+    initializer: (node: ts.Node) => node.kind != SyntaxKind.ObjectLiteralExpression,
     parent: {
       kind: SyntaxKind.ObjectLiteralExpression,
       parent: {
