@@ -1,4 +1,4 @@
-const KNOWN_COLORS = new Set(['transparent', 'currentColor'])
+export const KNOWN_COLORS = new Set(['transparent', 'currentColor'])
 
 const NAMED_COLORS = new Map([
   ['aliceblue', '#f0f8ff'],

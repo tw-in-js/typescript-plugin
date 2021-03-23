@@ -1,6 +1,6 @@
 import * as path from 'path'
 import Module from 'module'
-import { fileURLToPath, pathToFileURL } from 'url'
+import { fileURLToPath } from 'url'
 
 import type { Logger } from 'typescript-template-language-service-decorator'
 import type * as TS from 'typescript/lib/tsserverlibrary'
@@ -22,7 +22,7 @@ import type {
 import { theme, create, silent } from 'twind'
 import { VirtualSheet, virtualSheet } from 'twind/sheets'
 import { getConfig, loadFile } from './load'
-import { getColor } from './colors'
+import { getColor, KNOWN_COLORS } from './colors'
 
 import type { ConfigurationManager } from './configuration'
 import { watch } from './watch'
@@ -102,19 +102,17 @@ const detailsFromThemeValue = <Section extends keyof Theme>(
             .filter(Boolean)
             .join('/')
     }
+
+    case 'fontFamily': {
+      return Array.isArray(value) ? value.filter(Boolean).join(', ') : (value as string)
+    }
   }
 
-  if (typeof value == 'string') return value
-  if (typeof value == 'number') return '' + value
-
-  // https://github.com/tailwindlabs/tailwindcss/blob/master/src/util/transformThemeValue.js
-  // only testing for sections that uses an array for values
   if (
-    Array.isArray(value) &&
-    !['fontSize', 'outline'].includes(section) &&
-    value.every((x) => x == null || typeof x == 'string' || typeof x == 'number')
+    typeof value == 'string' &&
+    ((/color/i.test(section) && !KNOWN_COLORS.has(value)) || /\s/.test(value))
   ) {
-    return value.filter(Boolean).join(', ')
+    return value
   }
 
   return undefined
@@ -566,7 +564,7 @@ export class Twind {
                     detailsFromThemeValue(theme.section, theme.value),
                   ),
                 )) ||
-              interpolation ||
+              translateInterpolation(interpolation) ||
               detailFromCSS(sheet, tw, value, interpolation))
           )
         },
@@ -646,7 +644,7 @@ export class Twind {
               createCompletionToken(className, {
                 kind: screens.has(className) ? 'screen' : undefined,
                 raw: directive,
-                detail: key == '[' ? 'arbitrary value' : undefined,
+                label: className.endsWith('[') && key === '[' ? `${className}…]` : undefined,
                 theme:
                   key == '['
                     ? { section: sectionKey as keyof Theme, key: '', value: '' }
@@ -671,6 +669,7 @@ export class Twind {
           prefix,
           createCompletionToken(prefix, {
             raw: directive,
+            label: `${prefix}…${suffix}`,
             interpolation: value as CompletionToken['interpolation'],
           }),
         )
@@ -702,7 +701,11 @@ function generateCSS(
   sheet.reset()
 
   if (interpolation) {
-    value += getSampleInterpolation(interpolation)
+    value = value.replace(/…/g, getSampleInterpolation(interpolation))
+  }
+
+  if (value.endsWith('-[')) {
+    value += '…]'
   }
 
   if (value.endsWith(':')) {
@@ -730,6 +733,9 @@ function generateCSS(
     .trim()
 }
 
+// TODO do not match @keyframes
+const CSS_DECLARATION_RE = /[{;]\s*([A-Z\d-]+)\s*:\s*([^;}]+)/gi
+
 function detailFromCSS(
   sheet: VirtualSheet,
   tw: TW,
@@ -737,7 +743,11 @@ function detailFromCSS(
   interpolation?: CompletionToken['interpolation'],
 ): string {
   if (interpolation) {
-    value += getSampleInterpolation(interpolation)
+    value = value.replace(/…/g, getSampleInterpolation(interpolation))
+  }
+
+  if (value.endsWith('-[')) {
+    value += '…]'
   }
 
   let style: CSSRules = {}
@@ -757,7 +767,7 @@ function detailFromCSS(
 
   // - if at-rule use at rule
   // - if variant: use &:hover, &>*
-  if (key && /^@|&/.test(key)) {
+  if (value.endsWith(':') && key && /^@|&/.test(key)) {
     // TODO beautify children: siblings
     // TODO order of suggestions
     // TODO grouping prefix is ommited
@@ -768,9 +778,14 @@ function detailFromCSS(
   const css = generateCSS(sheet, tw, value)
 
   let result = ''
-  for (const [, property, value] of css.matchAll(/[{;]\s*([A-Z\d-]+)\s*:\s*([^;}]+)/gi)) {
+
+  // Reset as we break early
+  CSS_DECLARATION_RE.lastIndex = 0
+  for (let match: RegExpExecArray | null; (match = CSS_DECLARATION_RE.exec(css)); ) {
+    const [, property, value] = match
+
     if (result.length < 30) {
-      result += (result && '; ') + `${property}: ${value}`
+      result += (result && '; ') + `${property}: ${convertRem(value)}`
     } else {
       result += '; …'
       break
@@ -778,4 +793,19 @@ function detailFromCSS(
   }
 
   return result
+}
+
+function translateInterpolation(
+  interpolation?: CompletionToken['interpolation'],
+): string | undefined {
+  switch (interpolation) {
+    case `string`: // NonEmptyString
+      return 'any string'
+    case `number`: // NonNegativeNumber
+      return 'a number greater or equal zero'
+    case `nonzero`: // PositiveNumber
+      return 'a number greater zero'
+  }
+
+  return interpolation
 }

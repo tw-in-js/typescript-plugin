@@ -184,7 +184,7 @@ export class TwindLanguageService implements TemplateLanguageService {
               JSON.stringify(
                 {
                   [completion.theme.section]: {
-                    [completion.theme.key]: completion.theme.value,
+                    [completion.theme.key || '…']: completion.theme.value || '…',
                   },
                 },
                 null,
