@@ -120,6 +120,10 @@ export class TwindLanguageService implements TemplateLanguageService {
     this._twind = new Twind(typescript, info, configurationManager, logger)
   }
 
+  public get enabled(): boolean {
+    return this._twind.enabled
+  }
+
   public getCompletionsAtPosition(
     context: TemplateContext,
     position: ts.LineAndCharacter,

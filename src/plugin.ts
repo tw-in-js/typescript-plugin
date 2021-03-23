@@ -80,7 +80,7 @@ export class TwindPlugin {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getCompletionEntryDetails: (fileName, position, name, ...rest: any[]) => {
-        if (enable) {
+        if (enable && ttls.enabled) {
           const context = helper.getTemplate(fileName, position)
 
           if (context) {
@@ -97,7 +97,7 @@ export class TwindPlugin {
       },
 
       getCompletionsAtPosition: (fileName, position, options) => {
-        if (enable) {
+        if (enable && ttls.enabled) {
           const context = helper.getTemplate(fileName, position)
 
           if (context) {
@@ -112,7 +112,7 @@ export class TwindPlugin {
       },
 
       getQuickInfoAtPosition: (fileName, position) => {
-        if (enable) {
+        if (enable && ttls.enabled) {
           const context = helper.getTemplate(fileName, position)
 
           if (context) {
@@ -136,7 +136,7 @@ export class TwindPlugin {
       getSemanticDiagnostics: (fileName) => {
         const diagnostics = [...languageService.getSemanticDiagnostics(fileName)]
 
-        if (enable) {
+        if (enable && ttls.enabled) {
           helper.getAllTemplates(fileName).forEach((context) => {
             for (const diagnostic of ttls.getSemanticDiagnostics(context)) {
               diagnostics.push({

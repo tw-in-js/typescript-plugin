@@ -225,6 +225,10 @@ export class Twind {
     })
   }
 
+  public get enabled(): boolean {
+    return Boolean(this.state?.twindDTSSourceFile)
+  }
+
   private _reset(): void {
     this.logger.log('reset state')
     this._state = this._completions = undefined
