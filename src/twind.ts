@@ -252,7 +252,7 @@ export class Twind {
     )
 
     if (configFile) {
-      this.logger.log(`loaded twind config from ${configFile}`)
+      this.logger.log(`loaded twind config from ${configFile}: ${JSON.stringify(config)}`)
 
       // Reset all state on config file changes
       this._watchers.push(watch(configFile, () => this._reset(), { once: true }))

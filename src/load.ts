@@ -4,6 +4,8 @@ import * as Path from 'path'
 import Module from 'module'
 import { fileURLToPath } from 'url'
 
+import clearModule from 'clear-module'
+
 import type { Configuration } from 'twind'
 
 const TWIND_CONFIG_FILES = [
@@ -34,6 +36,8 @@ export const findConfig = (project: ts.server.Project, cwd = process.cwd()): str
 }
 
 export const loadFile = <T>(file: string, cwd = process.cwd()): T => {
+  const moduleId = Path.resolve(cwd, file)
+
   try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -41,11 +45,14 @@ export const loadFile = <T>(file: string, cwd = process.cwd()): T => {
 
     const require = Module.createRequire?.(from) || Module.createRequireFromPath(from)
 
+    clearModule(moduleId)
+
     require('sucrase/register')
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require(Path.resolve(cwd, file)) as T
-  } catch {
+    return require(moduleId) as T
+  } catch (error) {
+    console.error(`Failed to load ${moduleId}: ${error.stack}`)
     return {} as T
   }
 }

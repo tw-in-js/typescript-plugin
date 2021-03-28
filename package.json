@@ -96,11 +96,12 @@
     }
   },
   "dependencies": {
+    "clear-module": "^4.1.1",
     "cssbeautify": "^0.3.1",
     "fast-json-stable-stringify": "^2.1.0",
     "match-sorter": "^6.3.0",
     "sucrase": "^3.17.1",
-    "twind": "^0.16.9",
+    "twind": "^0.16.10",
     "typescript": "^4.1.0",
     "typescript-template-language-service-decorator": "^2.2.0",
     "vscode-languageserver-types": "^3.13.0"

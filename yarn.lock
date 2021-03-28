@@ -250,7 +250,7 @@ braces@^3.0.1:
   dependencies:
     fill-range "^7.0.1"
 
-callsites@^3.0.0:
+callsites@^3.0.0, callsites@^3.1.0:
   version "3.1.0"
   resolved "https://registry.npmjs.org/callsites/-/callsites-3.1.0.tgz#b3630abd8943432f54b3f0519238e33cd7df2f73"
   integrity sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==
@@ -271,6 +271,14 @@ chalk@^4.0.0:
   dependencies:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
+
+clear-module@^4.1.1:
+  version "4.1.1"
+  resolved "https://registry.npmjs.org/clear-module/-/clear-module-4.1.1.tgz#bf8ba3b62eb70ee1e0adec90589741425cf32db8"
+  integrity sha512-ng0E7LeODcT3QkazOckzZqbca+JByQy/Q2Z6qO24YsTp+pLxCfohGz2gJYJqZS0CWTX3LEUiHOqe5KlYeUbEMw==
+  dependencies:
+    parent-module "^2.0.0"
+    resolve-from "^5.0.0"
 
 color-convert@^1.9.0:
   version "1.9.3"
@@ -1017,6 +1025,13 @@ parent-module@^1.0.0:
   dependencies:
     callsites "^3.0.0"
 
+parent-module@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.npmjs.org/parent-module/-/parent-module-2.0.0.tgz#fa71f88ff1a50c27e15d8ff74e0e3a9523bf8708"
+  integrity sha512-uo0Z9JJeWzv8BG+tRcapBKNJ0dro9cLyczGzulS6EfeyAdeC9sbojtW6XwvYxJkEne9En+J2XEl4zyglVeIwFg==
+  dependencies:
+    callsites "^3.1.0"
+
 path-exists@^4.0.0:
   version "4.0.0"
   resolved "https://registry.npmjs.org/path-exists/-/path-exists-4.0.0.tgz#513bdbe2d3b95d7762e8c1137efa195c6c61b5b3"
@@ -1325,10 +1340,10 @@ tsutils@^3.17.1:
   dependencies:
     tslib "^1.8.1"
 
-twind@^0.16.9:
-  version "0.16.9"
-  resolved "https://registry.npmjs.org/twind/-/twind-0.16.9.tgz#62d04a12d4a96f5f1e72e477af4e8634f356eaac"
-  integrity sha512-cOpijhtEMEaIhHQ4H3+K/APn1kAYkMtV3fMB/zBfXP+rmKiwjnNZSot8w8YNGnKDqLbV+uCSuFiZtPL60Jscaw==
+twind@^0.16.10:
+  version "0.16.10"
+  resolved "https://registry.npmjs.org/twind/-/twind-0.16.10.tgz#9e7ac848b48568fc4a49fc8ea2d218cbbadb9aab"
+  integrity sha512-GjTPjEbon/Z2FOVsEVkF6nCXqdpmNtlcfIC3p4zwWm+WUsLraryW2OK6pkWwjkXPVwWZEm0RTjzsWOuPs3gaHQ==
   dependencies:
     csstype "^3.0.5"
     htmlparser2 "^6.0.0"
