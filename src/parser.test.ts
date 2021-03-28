@@ -162,7 +162,23 @@ const test = suite('Parser')
     [
       {
         raw: '-mx-5!',
-        value: '-mx-5!',
+        value: '!-mx-5',
+        name: '-mx-5',
+        prefix: '',
+        important: true,
+        negated: true,
+        loc: { start: 0, end: 6 },
+        spans: [{ start: 0, end: 6 }],
+        variants: [],
+      },
+    ],
+  ],
+  [
+    '!-mx-5',
+    [
+      {
+        raw: '!-mx-5',
+        value: '!-mx-5',
         name: '-mx-5',
         prefix: '',
         important: true,
@@ -192,7 +208,7 @@ const test = suite('Parser')
       },
       {
         raw: '2!',
-        value: 'sm:-mx-2!',
+        value: 'sm:!-mx-2',
         name: '-mx-2',
         prefix: '-mx',
         important: true,
@@ -229,6 +245,344 @@ const test = suite('Parser')
             value: 'xl:',
             name: 'xl',
             loc: { start: 12, end: 15 },
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    '!(text-center font-bold)',
+    [
+      {
+        raw: 'text-center',
+        value: '!text-center',
+        name: 'text-center',
+        prefix: '',
+        important: true,
+        negated: false,
+        loc: {
+          start: 2,
+          end: 13,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 1,
+          },
+          {
+            start: 2,
+            end: 13,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: 'font-bold',
+        value: '!font-bold',
+        name: 'font-bold',
+        prefix: '',
+        important: true,
+        negated: false,
+        loc: {
+          start: 14,
+          end: 23,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 1,
+          },
+          {
+            start: 14,
+            end: 23,
+          },
+        ],
+        variants: [],
+      },
+    ],
+  ],
+  [
+    '!hover:(text-center focus:font-bold)',
+    [
+      {
+        raw: 'text-center',
+        value: 'hover:!text-center',
+        name: 'text-center',
+        prefix: '',
+        important: true,
+        negated: false,
+        loc: {
+          start: 8,
+          end: 19,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 7,
+          },
+          {
+            start: 8,
+            end: 19,
+          },
+        ],
+        variants: [
+          {
+            raw: 'hover:',
+            value: 'hover:',
+            name: 'hover',
+            loc: {
+              start: 1,
+              end: 7,
+            },
+          },
+        ],
+      },
+      {
+        raw: 'font-bold',
+        value: 'hover:focus:!font-bold',
+        name: 'font-bold',
+        prefix: '',
+        important: true,
+        negated: false,
+        loc: {
+          start: 26,
+          end: 35,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 7,
+          },
+          {
+            start: 20,
+            end: 35,
+          },
+        ],
+        variants: [
+          {
+            raw: 'hover:',
+            value: 'hover:',
+            name: 'hover',
+            loc: {
+              start: 1,
+              end: 7,
+            },
+          },
+          {
+            raw: 'focus:',
+            value: 'focus:',
+            name: 'focus',
+            loc: {
+              start: 20,
+              end: 26,
+            },
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    'hover:!(text-center font-bold)',
+
+    [
+      {
+        raw: 'text-center',
+        value: 'hover:!text-center',
+        name: 'text-center',
+        prefix: '',
+        important: true,
+        negated: false,
+        loc: {
+          start: 8,
+          end: 19,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 7,
+          },
+          {
+            start: 8,
+            end: 19,
+          },
+        ],
+        variants: [
+          {
+            raw: 'hover:',
+            value: 'hover:',
+            name: 'hover',
+            loc: {
+              start: 0,
+              end: 6,
+            },
+          },
+        ],
+      },
+      {
+        raw: 'font-bold',
+        value: 'hover:!font-bold',
+        name: 'font-bold',
+        prefix: '',
+        important: true,
+        negated: false,
+        loc: {
+          start: 20,
+          end: 29,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 7,
+          },
+          {
+            start: 20,
+            end: 29,
+          },
+        ],
+        variants: [
+          {
+            raw: 'hover:',
+            value: 'hover:',
+            name: 'hover',
+            loc: {
+              start: 0,
+              end: 6,
+            },
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    'text!(xl underline)',
+    [
+      {
+        raw: 'xl',
+        value: '!text-xl',
+        name: 'text-xl',
+        prefix: 'text',
+        important: true,
+        negated: false,
+        loc: {
+          start: 6,
+          end: 8,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 5,
+          },
+          {
+            start: 6,
+            end: 8,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: 'underline',
+        value: '!text-underline',
+        name: 'text-underline',
+        prefix: 'text',
+        important: true,
+        negated: false,
+        loc: {
+          start: 9,
+          end: 18,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 5,
+          },
+          {
+            start: 9,
+            end: 18,
+          },
+        ],
+        variants: [],
+      },
+    ],
+  ],
+  [
+    '!text(xl underline) md:!m(-8)',
+    [
+      {
+        raw: 'xl',
+        value: '!text-xl',
+        name: 'text-xl',
+        prefix: 'text',
+        important: true,
+        negated: false,
+        loc: {
+          start: 6,
+          end: 8,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 5,
+          },
+          {
+            start: 6,
+            end: 8,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: 'underline',
+        value: '!text-underline',
+        name: 'text-underline',
+        prefix: 'text',
+        important: true,
+        negated: false,
+        loc: {
+          start: 9,
+          end: 18,
+        },
+        spans: [
+          {
+            start: 0,
+            end: 5,
+          },
+          {
+            start: 9,
+            end: 18,
+          },
+        ],
+        variants: [],
+      },
+      {
+        raw: '-8',
+        value: 'md:!-m-8',
+        name: '-m-8',
+        prefix: '-m',
+        important: true,
+        negated: true,
+        loc: {
+          start: 26,
+          end: 28,
+        },
+        spans: [
+          {
+            start: 20,
+            end: 25,
+          },
+          {
+            start: 26,
+            end: 28,
+          },
+        ],
+        variants: [
+          {
+            raw: 'md:',
+            value: 'md:',
+            name: 'md',
+            loc: {
+              start: 20,
+              end: 23,
+            },
           },
         ],
       },

@@ -169,7 +169,7 @@ function toRule(identifier: Identifier): Rule {
   }
 
   rule.value =
-    rule.variants.map((variant) => variant.value).join('') + rule.name + (rule.important ? '!' : '')
+    rule.variants.map((variant) => variant.value).join('') + (rule.important ? '!' : '') + rule.name
 
   return rule
 }
@@ -258,7 +258,6 @@ export interface Variant extends BaseNode {
  */
 export interface Group extends BaseNode {
   kind: NodeKind.Group
-
   // body: (Variant | Identifier | Group)[]
 }
 
@@ -386,7 +385,18 @@ function createGroup(node: Node, parent: Node, position: number): Group {
   }
 }
 
-function createVariant(node: Node, parent: Node, raw: string, start: number): Variant {
+function createVariant(
+  node: Exclude<Node, null>,
+  parent: Node,
+  raw: string,
+  start: number,
+): Variant {
+  if (raw[0] == '!') {
+    raw = raw.slice(1)
+    parent = node = node.next = createIdentifier(node, parent, '!', start)
+    start += 1
+  }
+
   return {
     kind: NodeKind.Variant,
 
@@ -425,14 +435,18 @@ function createIdentifier(
   let name = raw
   let negated = false
   let important = false
+
+  if (name[0] == '!') {
+    name = name.slice(1)
+    important = true
+  } else if (name[name.length - 1] == '!') {
+    name = name.slice(0, -1)
+    important = true
+  }
+
   if (name[0] == '-') {
     name = name.slice(1)
     negated = true
-  }
-
-  if (name[name.length - 1] == '!') {
-    name = name.slice(0, -1)
-    important = true
   }
 
   return {
