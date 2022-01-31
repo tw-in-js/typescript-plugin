@@ -79,7 +79,7 @@ export class TwindPlugin {
       ...languageService,
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getCompletionEntryDetails: (fileName, position, name, ...rest: any[]) => {
+      getCompletionEntryDetails: (fileName, position, name, ...rest) => {
         if (enable && ttls.enabled) {
           const context = helper.getTemplate(fileName, position)
 
@@ -92,8 +92,7 @@ export class TwindPlugin {
           }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (languageService.getCompletionsAtPosition as any)(fileName, position, name, ...rest)
+        return languageService.getCompletionEntryDetails(fileName, position, name, ...rest)
       },
 
       getCompletionsAtPosition: (fileName, position, options) => {
