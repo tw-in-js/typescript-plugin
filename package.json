@@ -1,6 +1,6 @@
 {
   "name": "@twind/typescript-plugin",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "TypeScript language service plugin that adds IntelliSense for twind",
   "//": "mark as private to prevent accidental publish - use 'yarn release'",
   "private": true,
