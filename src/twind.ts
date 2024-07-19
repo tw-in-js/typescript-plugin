@@ -3,7 +3,7 @@ import Module from 'module'
 import { fileURLToPath } from 'url'
 
 import type { Logger } from 'typescript-template-language-service-decorator'
-import type * as TS from 'typescript/lib/tsserverlibrary'
+import type TS from 'typescript/lib/typescript'
 
 import cssbeautify from 'cssbeautify'
 import stringify from 'fast-json-stable-stringify'
@@ -65,7 +65,7 @@ const detailsFromThemeValue = <Section extends keyof Theme>(
         ? '≥' + screen
         : ((Array.isArray(screen)
             ? (screen as ThemeScreenValue[])
-            : [screen as undefined]) as ThemeScreenValue[])
+            : [screen as unknown]) as ThemeScreenValue[])
             .filter(Boolean)
             .map((value) => {
               if (typeof value == 'string') {
@@ -212,7 +212,7 @@ export class Twind {
 
   constructor(
     private readonly typescript: typeof TS,
-    private readonly info: ts.server.PluginCreateInfo,
+    private readonly info: TS.server.PluginCreateInfo,
     private readonly configurationManager: ConfigurationManager,
     private readonly logger: Logger,
   ) {
@@ -267,9 +267,12 @@ export class Twind {
     })
 
     // Prefer project twind and fallback to bundled twind
-    let twindDTSFile = this.info.project
-      .resolveModuleNames(['twind'], program.getRootFileNames()[0])
-      .map((moduleName) => moduleName?.resolvedFileName)[0]
+    const resolvedModule = this.info.languageServiceHost.getResolvedModuleWithFailedLookupLocationsFromCache?.(
+      'twind',
+      program.getRootFileNames()[0],
+    )
+
+    let twindDTSFile = resolvedModule?.resolvedModule?.resolvedFileName
 
     if (twindDTSFile) {
       this.logger.log(`found local twind dts at ${twindDTSFile}`)
@@ -364,7 +367,7 @@ export class Twind {
       sheet,
       mode: {
         ...silent,
-        report: (info) => {
+        report: (info: ReportInfo) => {
           // Ignore error from substitions
           if (
             !(
@@ -387,8 +390,8 @@ export class Twind {
     })
 
     let context: Context
-    tw((_) => {
-      context = _
+    tw((ctx: Context) => {
+      context = ctx
       return ''
     })
 
@@ -511,10 +514,10 @@ export class Twind {
           const type = checker.getTypeAtLocation(node)
 
           // (type.flags & ts.TypeFlags.Union) | (type.flags & ts.TypeFlags.Intersection)
-          const { types } = type as ts.UnionOrIntersectionType
+          const { types } = type as TS.UnionOrIntersectionType
 
           // (type.flags & ts.TypeFlags.StringLiteral)
-          tokens = types.map((type) => (type as ts.StringLiteralType).value)
+          tokens = types.map((type) => (type as TS.StringLiteralType).value)
         } else {
           ts.forEachChild(node, visit)
         }

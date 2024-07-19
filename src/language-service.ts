@@ -463,11 +463,17 @@ export class TwindLanguageService implements TemplateLanguageService {
 
       if (selfRef) {
         matched.unshift(
-          Object.assign(Object.defineProperties({}, Object.getOwnPropertyDescriptors(selfRef)), {
-            value: '&',
-            raw: '&',
-            label: '&',
-          }),
+          Object.assign(
+            Object.defineProperties(
+              Object.assign({}, selfRef),
+              Object.getOwnPropertyDescriptors(selfRef),
+            ),
+            {
+              value: '&',
+              raw: '&',
+              label: '&',
+            },
+          ),
         )
       }
     }

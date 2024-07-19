@@ -20,7 +20,8 @@ export function watch(
 
     return () => watcher.close()
   } catch (error) {
-    if (['ERR_FEATURE_UNAVAILABLE_ON_PLATFORM', 'ENOENT'].includes(error.code)) {
+    const errno = error as NodeJS.ErrnoException
+    if (errno.code && ['ERR_FEATURE_UNAVAILABLE_ON_PLATFORM', 'ENOENT'].includes(errno.code)) {
       return () => {
         /* no-op*/
       }

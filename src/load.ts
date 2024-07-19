@@ -52,7 +52,7 @@ export const loadFile = <T>(file: string, cwd = process.cwd()): T => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require(moduleId) as T
   } catch (error) {
-    console.error(`Failed to load ${moduleId}: ${error.stack}`)
+    console.error(`Failed to load ${moduleId}: ${(error as Error).stack}`)
     return {} as T
   }
 }
